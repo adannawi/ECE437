@@ -34,7 +34,7 @@ interface exec_if;
   aluop_t aluop;
   opcode_t opcodeOUT, opcodeIN;
   word_t Ext_dat;
-  word_t result;
+  word_t resultIN, resultOUT;
   word_t instrIN, instrOUT;
   word_t busAIN, busAOUT;
   word_t busBIN, busBOUT;
@@ -43,8 +43,9 @@ interface exec_if;
   modport ex  (
     input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN, PCSrc, instr,
            opcodeIN, ALUSrc, RegDst, aluop, busAIN, busBIN, rd, rt, Ext_Dat,
+           resultIN
     output PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
-	   result, addr, busBOUT, busAOUT, branch, PCSrc
+	   resultOUT, addr, busBOUT, busAOUT, branch, PCSrc
   );
 
   modport tb  (
