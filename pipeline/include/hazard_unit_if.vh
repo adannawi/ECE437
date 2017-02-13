@@ -9,14 +9,16 @@
 import cpu_types_pkg::*;
 
 interface hazard_unit_if;
-  logic rs_0, rs_1, branch, jump, execDest, memDest, PCEn;
-  logic fetch_enable, fetch_flush;
-  logic decode_enable, decode_flush;
-  logic execute_enable, execute_flush;
-  logic memory_enable, memory_flush;
+  logic rs, rt, branch, jump, execDest, memDest, PCStall;
+  logic fetch_stall, fetch_flush;
+  logic decode_stall, decode_flush;
+  logic execute_stall, execute_flush;
+  logic memory_stall, memory_flush;
+  logic MemRead;
+  opcode_t opcode;
 
   modport hu (
-    input rs_0, rs_1, branch, jump, execDest, memDest,
-    output PCEn, fetch_enable, fetch_flush, decode_enable, decode_flush,
-    execute_enable, execute_flush, memory_enable, memory_flush
+    input rs, rt, opcode, execDest, memDest, MemRead,
+    output PCStall, fetch_stall, fetch_flush, decode_stall, decode_flush,
+    execute_stall, execute_flush, memory_stall, memory_flush
   );
