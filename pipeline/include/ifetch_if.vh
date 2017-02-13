@@ -17,12 +17,13 @@ interface ifetch_if;
   //Import types
   //previous import
   //Signal declarations
-  logic PCEn, branch;
-  logic [1:0] PCSrc;
-  logic [25:0] addr;
-  logic flush, enable;
-  word_t InstructionIN, InstructionOUT, PCIncIN, PCIncOUT;
-  opcode_t opcode;
+  //logic PCEn, branch;
+  //logic [1:0] PCSrc;
+  //logic [25:0] addr;
+  //logic flush, enable;
+  word_t InstructionIN, InstructionOUT;
+  word_t PCIncIN, PCIncOUT;
+  opcode_t opcodeIN, opcodeOUT;
 
   //modport fi  (
   //  input addr, branch, PCSrc, PCen,
@@ -30,14 +31,14 @@ interface ifetch_if;
   //);
 
   modport fi (
-    input PCIncIN, InstructionIN,
-    output PCIncOUT, InstructionOUT
+    input PCIncIN, InstructionIN, opcodeIN,
+    output PCIncOUT, InstructionOUT, opcodeOUT
   );
 
-  //modport tb  (
-  //  input PCInc, instruction, opcode,
-   // output addr, branch, Ext_dat, PCSrc, PCen
-  //);
+  modport tb  (
+    input PCIncOUT, InstructionOUT, opcodeOUT,
+    output PCIncIN, InstructionIN, opcodeIN
+  );
 
 endinterface
 
