@@ -33,8 +33,8 @@ interface mem_if;
   logic [25:0] addr;
 
   modport my  (
-    input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWEN, dREN, opcodeIN,
-	  resultIN, busB, rwIN, dmemloadIN,
+    input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, opcodeIN,
+	  resultIN, rwIN, dmemloadIN,
     output PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, opcodeOUT,
     dmemloadOUT, resultOUT, rwOUT
   );
