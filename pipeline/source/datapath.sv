@@ -1,6 +1,5 @@
 /*
-  Eric Villasenor
-  evillase@gmail.com
+  Noah Petersen, Ziad the OG
 
   datapath contains register file, control, hazard,
   muxes, and glue logic for processor
@@ -11,6 +10,8 @@
     control unit
     request unit
     alu
+
+  Modified for Pipeline
 */
 
 // data path interface
@@ -71,21 +72,9 @@ module datapath (
   //    Mem Reg interface
   mem_if.mif mmif ();
 
-
-
-
-
-
   //  Controller Signals
   opcode_t opcode;
-  /*  Should be handled by controller interface now
-  logic [1:0] PCSrc; //Selects source for next PC, set by Controller
-  logic [1:0] RegWDsel;
-  logic ; //Selects whether ALU output or memory data goes to register
-  logic writeReg; //Activates actual write to reg
-  logic [1:0] RegDst;
-  logic ALUSrc;
-  logic ExtOp;*/
+
   logic branch;
 
   //Request unit signals ->desired in order to manage timing of reads/writes
@@ -94,9 +83,6 @@ module datapath (
   //logic dwritereq;
 
   //    Instruction type delarations & Related signals
-  //r_t rinst;
-  //i_t iinst;
-  //j_t jinst;
   logic PCEn;
   logic [4:0] rs;
   logic [4:0] rt;
@@ -119,14 +105,10 @@ module datapath (
 
   word_t dataout;
   word_t RegWDat;
+
 ///////////////////////////////////////////////////////////////////////
 
-  //Register File Connection
-  register_file REG1(
-    .CLK(CLK),
-    .nRST(nRST),
-    .rfif(rfif1)
-  );
+
 
   //ALU Connection
   alu ALU1(
@@ -139,42 +121,142 @@ module datapath (
     .result(ALU_out)
     );
 
-  controller cntrl(
-    .ctif(ctif)
-  );
 
-  //Registers instantiation
+
+
+
+  //Pipeline Register Bank Instances
   mem_registers mem1 (CLK, nRST, mmif);
   decode_registers dc1 (CLK, nRST, deif);
   execute_registers exc1 (CLK, nRST, exif);
   fetch_registers fch1 (CLK, nRST, feif);
 
-  /*	Fetch Connections */
+
+  ////////////////////////
+  /*	FETCH STAGE	*/
+  ////////////////////////
+
+  //Modules
+
+  /*	Fetch Register Connections */
   //inputs
-  assign feif.instructionIN = dpif.imemload;	
+  assign feif.instructionIN = dpif.imemload;
   assign feif.PCIncIN = PCInc;
 
   //outputs
   assign ctif.instruction = feif.instructionOUT;
-  /* Controller IF Connections needed
-    Inputs - set
-    instruction -> from memory via dpif
 
-    Outputs -use to set other things
-      halt
-      dreadreq - to ru (USED)
-      dwritereq - to ru (USED)
-      RegDst - to sel on datapath (USED)
-      PCSrc - to datapath (USED)
-      ExtOp - to datapath  (USED)
-      RegWDsel - to datapath (USED)
-      MemtoReg - to datapath (USED)
-      writeReg - to datapath (USED)
-      ALUSrc - to datapath (USED)
+  //NEED TO INSERT DPIF SIGNALS FOR INTERFACING TO IMEM
+	//Need to add in remainer of signals needed to interface to Instruction memor (via dpif)
 
-*/
+  ////////////////////////
+  /*	DECODE STAGE	*/
+  ////////////////////////
 
-  assign deif.aluop = ctif.aluop;
+  //Modules
+  controller cntrl(
+    .ctif(ctif)
+  );
+
+  //Register File Connection
+  register_file REG1(
+    .CLK(CLK),
+    .nRST(nRST),
+    .rfif(rfif1)
+  );
+
+  /* Decode Register Connections */
+  //inputs
+    assign dif.PCIncIN = deif.PCIncOUT;
+    assign dif.InstructionIN = feif.instructionOUT;
+    assign dif.writeRegIN = ctif.writeReg;
+    assign dif.MemtoRegIN = ctif.MemtoRegIN;
+    assign dif.RWDSelIN = ctif.RWDSelIN;
+    assign dif.dWENIN = ctif.dwritereq;
+    assign dif.dRENIN = ctif.dreadreq;
+    assign dif.PCSrcIN = ctif.PCSrc;
+    assign dif.RegDstIN = ctif.RegDst;
+    assign dif.ALUSrcIN = ctif.ALUSrc;
+    assign dif.aluopIN = ctif.aluop;
+    assign dif.ext_datIN = Ext_dat;
+    assign dif.busAIN = rfif.rdat1;
+    assign dif.busBIN = rfif.rdat2;
+    assign dif.RtIN = rt;
+    assign dif.RdIN = rd;
+
+// Signal names for decode stage
+//	>Will be written into registers later if still needed
+  assign opcode = opcode_t'(feif.instructionOUT[31:26]);
+  assign rs = feif.instructionOUT[25:21];
+  assign rt = feif.instructionOUT[20:16];
+  assign rd = feif.instructionOUT[15:11];
+  assign shamt = feif.instructionOUT[10:6];
+  assign funct = funct_t'(feif.instructionOUT[5:0]);
+  assign imm16 = feif.instructionOUT[15:0];
+  assign addr = feif.instructionOUT[26:0];
+
+  //Extender - Decode stage
+  /*
+    Extend with 0's if ExtOp = 1
+    else preserve leading sign
+
+  */
+  always_comb begin
+    if(ctif.ExtOp == 0) begin
+      Ext_dat={16'h0000, imm16};
+    end else if(imm16[15] == 1) begin
+      Ext_dat={16'hFFFF, imm16};
+    end else begin
+      Ext_dat={16'h0000, imm16};
+    end
+  end
+
+  ////////////////////////
+  /*	EXECUTE STAGE	*/
+  ////////////////////////
+  //Modules
+
+  //Register Connections
+  //inputs
+  //outputs
+
+  //Other signals
+
+  ////////////////////////
+  /*	MEMORY STAGE	*/
+  ////////////////////////
+  //Modules
+
+  //Register Connections
+  //inputs
+  //outputs
+
+  //Other signals
+
+  ////////////////////////
+  /*  Write Back STAGE	*/
+  ////////////////////////
+  //Modules
+
+  //Register Connections
+  //inputs <- NA
+  //outputs
+
+  //Other signals
+
+  ////////////////////////////////
+  /*  Hazard Detection STAGE	*/
+  ////////////////////////////////
+  //Flush/Enable Signals
+  //
+
+
+  ////////////////////////////////
+
+
+
+  //outputs
+
 
   /* Request Unit If Connections
       inputs -> set
@@ -189,14 +271,14 @@ module datapath (
         dWEN - to dpif
         iREN - to dpif
   */
-  assign ruif.ireadreq = !dpif.halt; //Troublesome
+  assign ruif.ireadreq = !dpif.halt; //Troublesome, may be changed in pipeline now
   //assign ruif.dreadreq = ctif.dreadreq;
   //assign ruif.dwritereq = ctif.dwritereq;
   assign deif.dREN = ctif.dreadreq;
   assign deif.dWEN = ctif.dwritereq;
   assign ihit = dpif.ihit; //could just directly use dpif.ihit/dhit
   assign dhit = dpif.dhit;
- 
+
 
   /* Data Path (this module) Connections
     INPUTS -use to set stuff
@@ -251,16 +333,7 @@ logical negation
         rdat2 - busB
   */
 
-// I/O Connections to internal signal names (if relevant)
-  assign opcode = opcode_t'(dpif.imemload[31:26]); //This will be internal to 
-  assign rs = dpif.imemload[25:21];
-  assign rt = dpif.imemload[20:16];
 
-  assign rd = dpif.imemload[15:11];
-  assign shamt = dpif.imemload[10:6];
-  assign funct = funct_t'(dpif.imemload[5:0]);
-  assign imm16 = dpif.imemload[15:0];
-  assign addr = dpif.imemload[26:0];
 
 
 
@@ -382,21 +455,6 @@ logical negation
     endcase
   end
 
-  //Extender
-  /*
-    Extend with 0's if ExtOp = 1
-    else preserve leading sign
 
-  */
-/*
-  always_comb begin
-    if(ctif.ExtOp == 0) begin
-      Ext_dat={16'h0000, imm16};
-    end else if(imm16[15] == 1) begin
-      Ext_dat={16'hFFFF, imm16};
-    end else begin
-      Ext_dat={16'h0000, imm16};
-    end
-  end
-*/
+
 endmodule
