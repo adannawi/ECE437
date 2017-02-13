@@ -17,25 +17,31 @@ interface decode_if;
   //Import types
   //previous import
   //Signal declarations
-  logic writeReg, MemtoReg, dWEN, dREN;
-  logic [1:0] PCSrc, RWDSel, RegDst, ALUSrc;
-  logic [3:0] rd, rt, rw;
+  logic writeRegIN, writeRegOUT, MemtoRegOUT, MemtoRegIN, dWENOUT, dWENIN,
+  dRENOUT, dRENIN;
+  logic [1:0] PCSrcOUT, PRSrcIN, RWDSelOUT, RWDSelIN, RegDstOUT, RegDstIN,
+  ALUSrcOut, ALUSrcIN;
+  logic [3:0] RdIN, RdOUT, RtIN, RtOUT, Rw;
   //logic [25:0] addr;
-  aluop_t aluop;
+  aluop_t aluopIN, aluopOUT;
   opcode_t opcode_out, opcode_in;
-  word_t Ext_dat, busA, busB, dataout;
-  word_t instr_in, instr_out, PCInc_in, PCInc_out;
+  word_t ext_datIN, ext_datOUT, busAIN, busAOUT, busBIN, busBOUT, dataout;
+  word_t InstructionIN, InstructionOUT, PCIncIN, PCIncOUT;
+  logic flush, enable;
 
   modport de  (
-    input PCInc_in, instr_in, opcode_in, writeReg, dataout, rw,
-    output writeREg, MemtoReg, RWDSel, dWEN, dREN, PCSrc, instr_out,
-           opcode_out, ALUSrc, RegDst, aluop, busA, busB, rd, rt, PCInc_out, Ext_dat
-  );
+    input PCIncIN, InstructionIN, writeRegIN, MemtoRegIN, RWDSelIN,
+    dWENIN, dRENIN, PCSrcIN, RegDstIN, ALUSrcIN, aluopIN, ext_datIN, busAIN,
+    busBIN, RtIN, RdIN,
+    output PCIncOUT, InstructionOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT,
+    dWENOUT, dRENOUT, PCSrcOUT, RegDstOUT, ALUSrcOUT, aluopOUT, ext_datOUT,
+    busAOUT, busBOUT, RtOUT, RdOUT
+    );
 
   modport tb  (
-    input writeREg, MemtoReg, RWDSel, dWEN, dREN, PCSrc, instr_out,
+    input writeREg, MemtoReg, RWDSel, dWEN, dREN, PCSrc, InstructionOUT,
            opcode_out, ALUSrc, RegDst, aluop, busA, busB, rd, rt,
-    output PCInc, instr_in, opcode_in, writeReg, dataout, rw
+    output PCInc, InstructionIN, opcode_in, writeReg, dataout, rw
   );
 
 endinterface

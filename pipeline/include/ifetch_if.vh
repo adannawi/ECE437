@@ -20,9 +20,10 @@ interface ifetch_if;
   logic PCEn, branch;
   logic [1:0] PCSrc;
   logic [25:0] addr;
-
-  word_t instruction, PCInc;
+  logic flush, enable;
+  word_t InstructionIN, InstructionOUT, PCIncIN, PCIncOUT;
   opcode_t opcode;
+
   modport fi  (
     input addr, branch, PCSrc, PCen,
     output PCInc, instruction, opcode

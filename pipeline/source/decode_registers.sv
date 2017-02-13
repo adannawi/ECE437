@@ -3,10 +3,10 @@
 
 module decode_registers (
   input CLK, nRST,
-  decode_if.dif dif
+  decode_if.de dif
 );
 
-always_ff @ (posedge CLK, negedge nRST) 
+always_ff @ (posedge CLK, negedge nRST)
 begin
   if (!nRST) begin //Note these were originall (mistakenly?) assigning a value to the IN signals
     dif.PCIncOUT <= 0;
@@ -25,7 +25,7 @@ begin
     dif.busBOUT <= 0;
     dif.RtOUT <= 0;
     dif.RdOUT <= 0;
-  end else if (dif.decode_flush) begin //Note these were originall (mistakenly?) assigning a value to the IN signals
+  end else if (dif.flush) begin //Note these were originall (mistakenly?) assigning a value to the IN signals
     dif.PCIncOUT <= 0;
     dif.InstructionOUT <= 0;
     dif.writeRegOUT <= 0;
@@ -42,7 +42,7 @@ begin
     dif.busBOUT <= 0;
     dif.RtOUT <= 0;
     dif.RdOUT <= 0;
-  end else if (dif.decode_enable) begin
+  end else if (dif.enable) begin
     dif.PCIncOUT <= dif.PCIncIN;
     dif.InstructionOUT <= dif.InstructionIN;
     dif.writeRegOUT <= dif.writeRegIN;

@@ -3,7 +3,7 @@
 
 module fetch_registers (
   input logic CLK, nRST,
-  fetch_if.fif fif
+  ifetch_if.fi fif
 );
 
 always_ff @ (posedge CLK, negedge nRST)
@@ -11,10 +11,10 @@ begin
   if (!nRST) begin
     fif.PCIncOUT <= 0;
     fif.InstructionOUT <= 0;
-  end else if (fif.fetch_flush) begin
+  end else if (fif.flush) begin
     fif.PCIncOUT <= 0;
     fif.InstructionOUT <= 0;
-  end else if (fif.fetch_enable)begin
+  end else if (fif.enable)begin
     fif.PCIncOUT <= fif.PCIncIN;
     fif.InstructionOUT <= fif.InstructionIN;
   end else begin

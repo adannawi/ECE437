@@ -3,7 +3,7 @@
 
 module execute_registers (
   input logic CLK, nRST,
-  execute_if.eif eif
+  exec_if.ex eif
 );
 
 always_ff @ (posedge CLK, negedge nRST)
@@ -20,7 +20,7 @@ begin
     eif.resultOUT <= 0;
     eif.rwOUT <= 0;
     eif.busBOUT <= 0;
-  end else if (eif.execute_flush) begin
+  end else if (eif.flush) begin
     eif.PCIncOUT <= 0;
     eif.writeRegOUT <= 0;
     eif.MemtoRegOUT <= 0;
@@ -32,7 +32,7 @@ begin
     eif.resultOUT <= 0;
     eif.rwOUT <= 0;
     eif.busBOUT <= 0;
-  end else if (eif.execute_enable) begin
+  end else if (eif.enable) begin
     eif.PCIncOUT <= eif.PCIncIN;
     eif.writeRegOUT <= eif.writeRegIN;
     eif.MemtoRegOUT <= eif.MemtoRegIN;

@@ -3,7 +3,7 @@
 
 module mem_registers (
   input logic CLK, nRST,
-  mem_if.mif mif
+  mem_if.my mif
 );
 
 always_ff @ (posedge CLK, negedge nRST)
@@ -17,7 +17,7 @@ begin
     mif.dmemloadOUT <= 0;
     mif.resultOUT <= 0;
     mif.rwOUT <= 0;
-  end else if (mif.mem_flush) begin
+  end else if (mif.flush) begin
     mif.PCIncOUT <= 0;
     mif.writeRegOUT <= 0;
     mif.MemtoRegOUT <= 0;
@@ -26,7 +26,7 @@ begin
     mif.dmemloadOUT <= 0;
     mif.resultOUT <= 0;
     mif.rwOUT <= 0;
-  end else if (mif.mem_enable) begin
+  end else if (mif.enable) begin
     mif.PCIncOUT <= mif.PCIncIN;
     mif.writeRegOUT <= mif.writeRegIN;
     mif.MemtoRegOUT <= mif.MemtoRegIN;
