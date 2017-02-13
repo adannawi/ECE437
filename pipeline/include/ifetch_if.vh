@@ -24,9 +24,14 @@ interface ifetch_if;
   word_t InstructionIN, InstructionOUT, PCIncIN, PCIncOUT;
   opcode_t opcode;
 
-  modport fi  (
-    input addr, branch, PCSrc, PCen,
-    output PCInc, instruction, opcode
+  //modport fi  (
+  //  input addr, branch, PCSrc, PCen,
+  //  output PCInc, instruction, opcode
+  //);
+
+  modport fi (
+    input PCIncIN, InstructionIN,
+    output PCIncOUT, InstructionOUT
   );
 
   modport tb  (
