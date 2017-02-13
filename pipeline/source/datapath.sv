@@ -1,6 +1,5 @@
 /*
-  Eric Villasenor
-  evillase@gmail.com
+  Noah Petersen, Ziad the OG
 
   datapath contains register file, control, hazard,
   muxes, and glue logic for processor
@@ -11,6 +10,8 @@
     control unit
     request unit
     alu
+
+  Modified for Pipeline
 */
 
 // data path interface
@@ -122,8 +123,8 @@ module datapath (
 
 
 
-	
-  
+
+
   //Pipeline Register Bank Instances
   mem_registers mem1 (CLK, nRST, mmif);
   decode_registers dc1 (CLK, nRST, deif);
@@ -139,7 +140,7 @@ module datapath (
 
   /*	Fetch Register Connections */
   //inputs
-  assign feif.instructionIN = dpif.imemload;	
+  assign feif.instructionIN = dpif.imemload;
   assign feif.PCIncIN = PCInc;
 
   //outputs
@@ -183,7 +184,7 @@ module datapath (
     assign dif.RtIN = rt;
     assign dif.RdIN = rd;
 
-// Signal names for decode stage 
+// Signal names for decode stage
 //	>Will be written into registers later if still needed
   assign opcode = opcode_t'(feif.instructionOUT[31:26]);
   assign rs = feif.instructionOUT[25:21];
@@ -238,7 +239,7 @@ module datapath (
   //Modules
 
   //Register Connections
-  //inputs <- NA  
+  //inputs <- NA
   //outputs
 
   //Other signals
@@ -248,7 +249,7 @@ module datapath (
   ////////////////////////////////
   //Flush/Enable Signals
   //
-  
+
 
   ////////////////////////////////
 
@@ -277,7 +278,7 @@ module datapath (
   assign deif.dWEN = ctif.dwritereq;
   assign ihit = dpif.ihit; //could just directly use dpif.ihit/dhit
   assign dhit = dpif.dhit;
- 
+
 
   /* Data Path (this module) Connections
     INPUTS -use to set stuff
