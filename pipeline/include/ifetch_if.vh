@@ -34,10 +34,10 @@ interface ifetch_if;
     output PCIncOUT, InstructionOUT
   );
 
-  modport tb  (
-    input PCInc, instruction, opcode,
-    output addr, branch, Ext_dat, PCSrc, PCen
-  );
+  //modport tb  (
+  //  input PCInc, instruction, opcode,
+   // output addr, branch, Ext_dat, PCSrc, PCen
+  //);
 
 endinterface
 

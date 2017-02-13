@@ -17,31 +17,32 @@ interface mem_if;
   //Import types
   //previous import
   //Signal declarations
-  logic writeReg_in, writeReg_out;
-  logic MemtoReg_in, MemtoReg_out;
-  word_t PCInc_in, PCInc_out;
+  logic writeRegIN, writeRegOUT;
+  logic MemtoRegIN, MemtoRegOUT;
+  word_t PCIncIN, PCIncOUT;
   logic dWEN;
   logic dREN;
-  logic [4:0] rw_in, rw_out;
-  opcode_t opcode_out, opcode_in;
-  logic [1:0] RWDSel_in, RWDSel_out;
+  logic [4:0] rwIN, rwOUT;
+  opcode_t opcodeOUT, opcodeIN;
+  logic [1:0] RWDSelIN, RWDSelOUT;
+  logic enable, flush;
 
-
-  word_t result_in, result_out;
+  word_t resultIN, resultOUT;
   word_t busB;
-  word_t dmemload, dmemstore;
+  word_t dmemloadOUT, dmemloadIN, dmemstore;
   logic [25:0] addr;
- 
+
   modport my  (
-    input PCInc_in, writeReg_in, MemtoReg_in, RWDSel_in, dWEN, dREN, opcode_in,
-	  result_in, busB, rw_in,
-    output PCInc_out, writeReg_out, MemtoReg_out, RWDSel_out, opcode_out, dmemload, result_out, dmemstore
+    input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, opcodeIN,
+	  resultIN, rwIN, dmemloadIN,
+    output PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, opcodeOUT,
+    dmemloadOUT, resultOUT, rwOUT
   );
 
   modport tb  (
-    input PCInc_out, writeReg_out, MemtoReg_out, RWDSel_out, opcode_out, dmemload, result_out, dmemstore
-    output PCInc_in, writeReg_in, MemtoReg_in, RWDSel_in, dWEN, dREN, opcode_in,
-	  result_in, busB, rw_in
+    input PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, opcodeOUT, dmemload, resultOUT, dmemstore,
+    output PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWEN, dREN, opcodeIN,
+	  resultIN, busB, rwIN
   );
 
 endinterface

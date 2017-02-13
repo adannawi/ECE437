@@ -29,7 +29,7 @@ interface exec_if;
   logic [1:0] RWDSelIN, RWDSelOUT;
   logic flush, enable;
   logic [1:0] PCSrc, RegDst, ALUSrc;
-  logic [3:0] rd, rt, rwOUT, rwIN;
+  logic [3:0] rd, rt, rwOUT, rwIN; //Why are rd/rt here?
   //logic [25:0] addr;
   aluop_t aluop;
   opcode_t opcodeOUT, opcodeIN;
@@ -42,18 +42,18 @@ interface exec_if;
 
   modport ex  (
     input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN,
-           opcodeIN, busBIN, resultIN
+           opcodeIN, busBIN, resultIN, rwIN,
     output PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
-	   resultOUT, busBOUT
+	   resultOUT, busBOUT, rwOUT
   );
 
-  modport tb  (
-    input PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
-	   result, addr, busBOUT, busAOUT, branch, PCSrc
-    output PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN, PCSrc, instr,
-           opcodeIN, ALUSrc, RegDst, aluop, busAIN, busBIN, rd, rt, Ext_Dat,
-
-  );
+  //modport tb  (
+  //  input PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
+//	   result, addr, busBOUT, busAOUT, branch, PCSrc, rwOUT,
+  //  output PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN, PCSrc, instr,
+   //        opcodeIN, ALUSrc, RegDst, aluop, busAIN, busBIN, rd, rt, Ext_Dat, rwIN
+//
+  //);
 
 endinterface
 

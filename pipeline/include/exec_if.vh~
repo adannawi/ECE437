@@ -17,42 +17,41 @@ interface exec_if;
   //Import types
   //previous import
   //Signal declarations
-  logic writeReg_in, writeReg_out;
-  logic MemtoReg_in, MemtoREg_out;
-  logic dWEN_in, dWEN_out;
-  logic dREN_in, dREN_out;
+  logic writeRegIN, writeRegOUT;
+  logic MemtoRegIN, MemtoRegOUT;
+  logic dWENIN, dWENOUT;
+  logic dRENIN, dRENOUT;
   logic branch;
-  opcode_t opcode_out, opcode_in;
+  opcode_t opcodeOUT, opcodeIN;
   word_t instr
   aluop_t aluop;
-  word_t PCInc_in, PCInc_out;
-  logic [1:0] RWDSel_in, RWDSel_out;
-
-
+  word_t PCIncIN, PCIncOUT;
+  logic [1:0] RWDSelIN, RWDSelOUT;
+  logic flush, enable;
   logic [1:0] PCSrc, RegDst, ALUSrc;
-  logic [3:0] rd, rt, rw;
+  logic [3:0] rd, rt, rwOUT, rwIN; //Why are rd/rt here?
   //logic [25:0] addr;
   aluop_t aluop;
-  opcode_t opcode_out, opcode_in;
-  word_t Ext_dat; 
-  word_t result;
-  word_t instr_in, instr_out; 
-  word_t busA_in, busA_out; 
-  word_t busB_in, busB_out;
+  opcode_t opcodeOUT, opcodeIN;
+  word_t Ext_dat;
+  word_t resultIN, resultOUT;
+  word_t instrIN, instrOUT;
+  word_t busAIN, busAOUT;
+  word_t busBIN, busBOUT;
   logic [25:0] addr;
- 
+
   modport ex  (
-    input PCInc_in, writeReg_in, MemtoReg_in, RWDSel_in, dWEN_in, dREN_in, PCSrc, instr,
-           opcode_in, ALUSrc, RegDst, aluop, busA_in, busB_in, rd, rt, Ext_Dat,
-    output PCInc_out, writeReg_out, MemtoREg_out, RWDSel_out, dWEN_out, dREN_out, opcode_out,
-	   result, addr, busB_out, busA_out, branch, PCSrc
+    input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN,
+           opcodeIN, busBIN, resultIN, rwIN,
+    output PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
+	   resultOUT, busBOUT, rwOUT
   );
 
   modport tb  (
-    input PCInc_out, writeReg_out, MemtoREg_out, RWDSel_out, dWEN_out, dREN_out, opcode_out,
-	   result, addr, busB_out, busA_out, branch, PCSrc
-    output PCInc_in, writeReg_in, MemtoReg_in, RWDSel_in, dWEN_in, dREN_in, PCSrc, instr,
-           opcode_in, ALUSrc, RegDst, aluop, busA_in, busB_in, rd, rt, Ext_Dat,
+    input PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
+	   result, addr, busBOUT, busAOUT, branch, PCSrc, rwOUT,
+    output PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN, PCSrc, instr,
+           opcodeIN, ALUSrc, RegDst, aluop, busAIN, busBIN, rd, rt, Ext_Dat, rwIN
 
   );
 

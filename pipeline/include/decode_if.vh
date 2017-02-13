@@ -21,7 +21,7 @@ interface decode_if;
   dRENOUT, dRENIN;
   logic [1:0] PCSrcOUT, PRSrcIN, RWDSelOUT, RWDSelIN, RegDstOUT, RegDstIN,
   ALUSrcOut, ALUSrcIN;
-  logic [3:0] RdIN, RdOUT, RtIN, RtOUT, Rw;
+  logic [3:0] rdIN, rdOUT, RtIN, RtOUT;
   //logic [25:0] addr;
   aluop_t aluopIN, aluopOUT;
   opcode_t opcode_out, opcode_in;
@@ -32,17 +32,17 @@ interface decode_if;
   modport de  (
     input PCIncIN, InstructionIN, writeRegIN, MemtoRegIN, RWDSelIN,
     dWENIN, dRENIN, PCSrcIN, RegDstIN, ALUSrcIN, aluopIN, ext_datIN, busAIN,
-    busBIN, RtIN, RdIN,
+    busBIN, rtIN, rdIN,
     output PCIncOUT, InstructionOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT,
     dWENOUT, dRENOUT, PCSrcOUT, RegDstOUT, ALUSrcOUT, aluopOUT, ext_datOUT,
-    busAOUT, busBOUT, RtOUT, RdOUT
+    busAOUT, busBOUT, rtOUT, rdOUT
     );
 
-  modport tb  (
-    input writeREg, MemtoReg, RWDSel, dWEN, dREN, PCSrc, InstructionOUT,
-           opcode_out, ALUSrc, RegDst, aluop, busA, busB, rd, rt,
-    output PCInc, InstructionIN, opcode_in, writeReg, dataout, rw
-  );
+  //modport tb  (
+  //  input writeREg, MemtoReg, RWDSel, dWEN, dREN, PCSrc, InstructionOUT,
+  //         opcode_out, ALUSrc, RegDst, aluop, busA, busB, rd, rt,
+  //  output PCInc, InstructionIN, opcode_in, writeReg, dataout
+  //);
 
 endinterface
 

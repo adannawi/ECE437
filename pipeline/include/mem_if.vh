@@ -39,11 +39,11 @@ interface mem_if;
     dmemloadOUT, resultOUT, rwOUT
   );
 
-  modport tb  (
-    input PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, opcodeOUT, dmemload, resultOUT, dmemstore
-    output PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWEN, dREN, opcodeIN,
-	  resultIN, busB, rwIN
-  );
+  //modport tb  (
+  //  input PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, opcodeOUT, dmemload, resultOUT, dmemstore,
+  //  output PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWEN, dREN, opcodeIN,
+//	  resultIN, busB, rwIN
+  //);
 
 endinterface
 
