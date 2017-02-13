@@ -41,11 +41,10 @@ interface exec_if;
   logic [25:0] addr;
 
   modport ex  (
-    input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN, PCSrc, instr,
-           opcodeIN, ALUSrc, RegDst, aluop, busAIN, busBIN, rd, rt, Ext_Dat,
-           resultIN
+    input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN,
+           opcodeIN, busBIN, resultIN
     output PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
-	   resultOUT, addr, busBOUT, busAOUT, branch, PCSrc
+	   resultOUT, busBOUT
   );
 
   modport tb  (
