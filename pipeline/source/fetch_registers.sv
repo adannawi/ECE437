@@ -1,4 +1,4 @@
-`include "fetch_if.vh"
+`include "ifetch_if.vh"
 `include "cpu_types_pkg.vh"
 
 module fetch_registers (

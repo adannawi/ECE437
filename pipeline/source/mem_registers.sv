@@ -44,6 +44,7 @@ begin
     mif.dmemloadOUT <= mif.dmemloadOUT;
     mif.resultOUT <= mif.resultOUT;
     mif.rwOUT <= mif.rwOUT;
+  end
 end
 
 endmodule

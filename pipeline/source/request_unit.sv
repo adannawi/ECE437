@@ -43,8 +43,9 @@ module request_unit (
       ruif.iREN <= ruif.ireadreq;
     end
   end
-
-
+/*
+  assign deif.enable = ihit && (hu.enable)  
+*/
 //assign ruif.iREN = ruif.ireadreq & !ruif.ihit; //Ignoring ihit for now
 
   always_ff @(posedge CLK, negedge nRST) begin

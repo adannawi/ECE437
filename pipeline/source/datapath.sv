@@ -18,8 +18,8 @@
 `include "datapath_cache_if.vh"
 `include "mem_if.vh"
 `include "decode_if.vh"
-`include "fetch_if.vh"
-`include "execute_if.vh"
+`include "ifetch_if.vh"
+`include "exec_if.vh"
 
 // alu op, mips op, and instruction type
 `include "cpu_types_pkg.vh"
@@ -72,6 +72,7 @@ module datapath (
 
   word_t dataout;
   word_t RegWDat;
+  word_t branchaddr;
 
   //    Register file interface
   register_file_if rfif1 ();
@@ -79,20 +80,20 @@ module datapath (
   //    Controller Interface
   controller_if ctif ();
 
-  //    Request Unit Interface
-  request_unit_if ruif ();
+  //    Request Unit Interface -> nix'd for pipeline
+  //request_unit_if ruif ();
 
   //    Fetch Reg interface
-  fetch_if.fif feif ();
+  fetch_if feif ();
 
   //    Decode Reg interface
-  decode_if.dif deif ();
+  decode_if deif ();
 
   //    Execute Reg interface
-  execute_if.eif exif ();
+  exec_if exif ();
 
   //    Mem Reg interface
-  mem_if.mif mmif ();
+  mem_if mmif ();
 
   //  Controller Signals
   opcode_t opcode;
@@ -125,13 +126,13 @@ module datapath (
   //inputs
   assign feif.instructionIN = dpif.imemload;
   assign feif.PCIncIN = PCInc;
-
+  assign feif.opcode = opcode_t'(dpif.imemload[31:26]);
   //outputs (not to next pipe register)
   assign ctif.instruction = feif.instructionOUT;
 
   //NEED TO INSERT DPIF SIGNALS FOR INTERFACING TO IMEM
 	//Need to add in remainer of signals needed to interface to Instruction memor (via dpif)
-	
+
   //PC Nxt Standard Update <- These may need to change
   assign PCInc = PC + 4;
 
@@ -163,19 +164,22 @@ module datapath (
           //    Want
           //    Branch Condition?
       2'b01:  begin
-                if(branch == 1) begin
+                PCNxt = branchaddr;
+              end
+          //Branch logic handled in Exec stage now
+               /* if(branch == 1) begin
                   //PCNxt = (Ext_dat << 2) + PCInc;
-		  PCNxt = BranchAddr;
+            PCNxt = BranchAddr;
                 end else begin
                   PCNxt = PCInc;
                 end
-              end
+              end*/
           //Value from Register 31 -> Jump Return Addr
-      2'b10: PCNxt = busA; //Intended to set Bus B to Reg31 for this instr
+      2'b10: PCNxt = deif.busA; //Intended to set Bus B to Reg31 for this instr
           //Go to location stored in register (some kind of program jump)
-      2'b11: PCNxt = {PCInc[31:28],addr,2'b00}; //Set Bus A to wherever the ADDR is stored for this
+      2'b11: PCNxt = {deif.PCInc[31:28],addr,2'b00}; //Set Bus A to wherever the ADDR is stored for this
     endcase
-  endv
+  end
   ////////////////////////
   /*	DECODE STAGE	*/
   ////////////////////////
@@ -193,7 +197,7 @@ module datapath (
   );
 
   //  Connect Register File
-  assign rfif1.WEN = //(ctif.writeReg & (dpif.dhit | dpif.ihit));
+  assign rfif1.WEN = mmif.writeRegOUT; //(ctif.writeReg & (dpif.dhit | dpif.ihit));
   assign rfif1.wsel = rw;//Check on mux for Rd/Rt
   assign rfif1.rsel1 = rs; //Rs
   assign rfif1.rsel2 = rt; //Rt
@@ -217,12 +221,12 @@ module datapath (
     assign deif.ext_datIN = Ext_dat;
     assign deif.busAIN = rfif.rdat1;
     assign deif.busBIN = rfif.rdat2;
-    assign deif.RtIN = rt;
-    assign deif.RdIN = rd;
+    assign deif.rtIN = rt;
+    assign deif.rdIN = rd;
 
 // Signal names for decode stage
 //	>Will be written into registers later if still needed
-  assign opcode = opcode_t'(feif.instructionOUT[31:26]);
+  assign opcode = feif.opcodeOUT;
   assign rs = feif.instructionOUT[25:21];
   assign rt = feif.instructionOUT[20:16];
   assign rd = feif.instructionOUT[15:11];
@@ -255,7 +259,7 @@ module datapath (
   alu ALU1(
     .A(deif.busAOUT),
     .B(ALU_Bin),
-    .aluop(deif.aluopOUT), 
+    .aluop(deif.aluopOUT),
     .neg(neg),  //DC
     .overflow(overflow), //DC
     .zero(zero),
@@ -263,16 +267,20 @@ module datapath (
     );
   //Register Connections
   //inputs
-  assign exif.PCIncIN =
-  assign exif.writeRegIn =
-  assign exif.MemtoRegIN =
-  assign exif.RWDSelIN =
-  assign exif.dWENIN =
-  assign exif.dRENIN =
-  assign exif.opcodeIN =
-  assign exif.busBIN =
-  assign exif.resultIN =
+  assign exif.PCIncIN = deif.PCIncOUT;
+  assign exif.writeRegIN = deif.writeRegOUT;
+  assign exif.MemtoRegIN = deif.MemtoRegOUT;
+  assign exif.RWDSelIN = deif.RWDSelOUT;
+  assign exif.dWENIN = deif.dWENOUT;
+  assign exif.dRENIN = deif.dRENOUT;
+  assign exif.opcodeIN = deif.opcodeOUT;
+  assign exif.busBIN = deif.busBOUT;
+  assign exif.resultIN = result;
   //outputs (not to next pipe register)
+  //Ext_dat -> done in MUX, Lshift/adder for branchaddr
+  //Bus_B -> Also used in mux
+  //Rd -> used in RegDst MUX
+  //Rt -> used in Regdst mux
 
   //Other signals
     //ALU Port B Selection MUX
@@ -280,19 +288,19 @@ module datapath (
       casez(ctif.ALUSrc)
         2'b00: ALU_Bin = deif.busB;
         2'b01: ALU_Bin = deif.Ext_dat;
-        2'b10: ALU_Bin = deif.instruction[10:6]; //Shamt, easier to pull directly from instruction
-        2'b11: ALU_Bin = '0;
+        2'b10: ALU_Bin = {{25{1'b0}}, deif.instruction[10:6]}; //Shamt, easier to pull directly from instruction
+        2'b11: ALU_Bin = '0; //Not connected to anything meaningful, should not be used
       endcase
     end
-  //Register Write Location Select (Rw)
+  //Register Write Location Select (exif.Rw)
   always_comb begin
     casez(deif.RegDst)
-      2'b00: rw = deif.RtOUT;
-      2'b01: rw = deif.RdOUT;
-      2'b10: rw = 5'b11111;
-      2'b11: rw = 5'b00001;
+      2'b00: exif.rwIN = deif.rtOUT;
+      2'b01: exif.rwIN = deif.rdOUT;
+      2'b10: exif.rwIN = 5'b11111;
+      2'b11: exif.rwIN = 5'b00001;
       default:
-        rw = '0;
+        exif.rwIN = '0;
      endcase
   end
   	//Logic for result selection for LUI
@@ -303,19 +311,24 @@ module datapath (
       result = ALU_out;
     end
   end
-	//Calculate Branch Address
-  assign BranchAddr = (deif.Ext_dat << 2) + deif.PCInc;
+	//Calculate Branch Address (not always used)
+  assign branchaddr = (deif.Ext_dat << 2) + deif.PCInc;
 
-	//Modify next PC Src if Branch taken or not
+  //Modify next PC Src if Branch taken or not
+  //Generates PCSrc for use in IF
   always_comb begin
     PCSrc = 2'b00;
     if(deif.PCSrc == 2'b01) begin
       if(branch == 1) begin
+	//Branch taken -> keep current PCSrc
+	//Flush needed for extra instructions grabbed
         PCSrc = deif.PCSrc;
       end else begin
+	//Keep selecting PC+4, no flush needed (currently) since no prediction logic
         PCSrc = 2'b00;
       end
     end else begin
+      //Default is PCSrc is just what is set in controller
       PCSrc = deif.PCSrc;
     end
   end
@@ -329,6 +342,7 @@ module datapath (
       BNE:  if(zero == 0) begin
               branch = 1;
             end
+      default: branch = 0;
     endcase
   end
 
@@ -336,33 +350,30 @@ module datapath (
   /*	MEMORY STAGE	*/
   ////////////////////////
   //Modules
- 
+
   //Register Connections
   //inputs
   assign mmif.PCIncIN = exif.PCIncOUT;
-  assign mmif.writeRegIN =
-  assign mmif.MemtoRegIN =
-  assign mmif.RWDSelIN =
-  assign mmif.opcodeIN =
+  assign mmif.writeRegIN = exif.writeRegOUT;
+  assign mmif.MemtoRegIN = exit.MemtoRegOUT;
+  assign mmif.RWDSelIN = exif.RWDSelOUT;
+  assign mmif.opcodeIN = exif.opcodeOUT;
   assign mmif.resultIN = exif.resultOUT;
-  assign mmif.rwIN =
+  assign mmif.rwIN = exif.rwOUT;
   assign mmif.dmemloadIN = dpif.dmemload;
 
   //outputs (not to next pipe register)
-
-  //Other signals
   assign dpif.dmemstore = exif.busBOUT;
   assign dpif.dmemaddr = exif.resultIN;
-  
+
   ////////////////////////
   /*  Write Back STAGE	*/
   ////////////////////////
   //Modules
 
   //Register Connections
-  //inputs <- NA
-  //outputs
-
+  //outputs (some of thse are feedback signals)
+  assign rw = mmif.rwOUTl;
   //Other signals
   //Register Data Write MUX
   always_comb begin
@@ -375,11 +386,11 @@ module datapath (
   //  Data Feedback to register select
   //  Need to assign based off of Mem Latch signals
   always_comb begin
-	if(mmif.MemtoReg == 1) begin
-		dataout = mmif.dmemload;
-	end else begin
-		dataout = mmif.result;
-	end
+    if(mmif.MemtoReg == 1) begin
+      dataout = mmif.dmemload;
+    end else begin
+      dataout = mmif.result;
+    end
   end
   ////////////////////////////////
   /*    Hazard Detection Unit	*/

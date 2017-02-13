@@ -1,7 +1,7 @@
-`include "execute_if.vh"
+`include "exec_if.vh"
 `include "cpu_types_pkg.vh"
 
-module execute_registers (
+module exec_registers (
   input logic CLK, nRST,
   exec_if.ex eif
 );
