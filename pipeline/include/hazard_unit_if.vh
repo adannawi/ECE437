@@ -14,11 +14,14 @@ interface hazard_unit_if;
   logic decode_stall, decode_flush;
   logic execute_stall, execute_flush;
   logic memory_stall, memory_flush;
-  logic MemRead;
+  logic MemRead_Ex, MemRead_Mem;
+  logic ihit, dhit;
   opcode_t opcode;
 
   modport hu (
-    input rs, rt, opcode, execDest, memDest, MemRead,
+    input rs, rt, opcode, execDest, memDest, MemRead_Ex, MemRead_Mem, ihit, dhit
     output PCStall, fetch_stall, fetch_flush, decode_stall, decode_flush,
     execute_stall, execute_flush, memory_stall, memory_flush
   );
+
+

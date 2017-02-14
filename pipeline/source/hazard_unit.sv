@@ -29,8 +29,11 @@ begin
   // Freeze later instructions behind as long as stalled
   // Continue earlier instructions ahead
 
+
+
   // Handle Ld-Use Hazard
-  if (huif.memRead & ((execDest == rs) | (execDest == rt ))) begin
+  if (huif.memRead_Ex & ((execDest == rs) | (execDest == rt ))) |
+    (huif.memRead_Mem & ((memDest == rs) | (memDset == rt )))   begin
     // check if execDest == 0 for load use??
     huif.PCStall = 1;
     huif.fetch_stall = 1;
@@ -50,6 +53,9 @@ begin
   if (opcode == "BEQ" || opcode == "BNE") begin
     huif.fetch_flush = 1;
   end
-
 end
+
+  // Flush the execute flush on a dhit and move LW into WB stage
+  assign huif.execute_flush = huif.dhit;
+
 endmodule
