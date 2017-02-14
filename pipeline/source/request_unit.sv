@@ -33,16 +33,7 @@ module request_unit (
   //previous import
   //assign ruif.iREN = ruif.ireadreq;
 
-  always_ff @(posedge CLK, negedge nRST) begin
-    if(nRST == 0) begin
-      ruif.iREN <= 0;
-    end else if (ruif.ihit == 1) begin
-      //Reset on ihit
-      ruif.iREN <= 0;
-    end else begin
-      ruif.iREN <= ruif.ireadreq;
-    end
-  end
+
 /*
   assign deif.enable = ihit && (hu.enable)  
 */
@@ -64,8 +55,9 @@ module request_unit (
         ruif.dWEN <= ruif.dwritereq;
       end else begin
 	//Assign default of hold same value (for variable latency)
-	ruif.dREN <= ruif.dREN;
-	ruif.dWEN <= ruif.dWEN;
+  //Should be handled by waiting for dhit before flushing ex reg
+				ruif.dREN <= ruif.dREN;
+				ruif.dWEN <= ruif.dWEN;
       end
     end
   end
