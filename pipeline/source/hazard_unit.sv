@@ -31,17 +31,38 @@ begin
   // Continue earlier instructions ahead
 
   // Handle Ld-Use Hazard
-  if ((huif.MemRead_Ex & ((huif.execDest == huif.rs) || (huif.execDest == huif.rt))) || (huif.MemRead_Mem & ((huif.memDest == huif.rs) || (huif.memDest == huif.rt ))))   begin
-    // check if execDest == 0 for load use??
-    huif.PCStall = 1;
-    huif.fetch_stall = 1;
-    huif.decode_stall = 1;
-    huif.decode_flush = 1;
+  if (huif.MemRead_Ex & ((huif.execDest == huif.rs) || (huif.execDest == huif.rt))) begin
+		if (huif.execDest != 0) begin
+	   	huif.PCStall = 1;
+    	huif.fetch_stall = 1;
+    	huif.decode_stall = 1;
+    	huif.decode_flush = 1;
+		end
+  end
+
+
+	if (huif.MemRead_Mem & ((huif.memDest == huif.rs) || (huif.memDest == huif.rt ))) begin
+    if (huif.memDest != 0) begin
+   // check if execDest == 0 for load use??
+    	huif.PCStall = 1;
+    	huif.fetch_stall = 1;
+    	huif.decode_stall = 1;
+    	huif.decode_flush = 1;
+  	end
   end
 
   // Handle RAW Hazard
-  if (((huif.execDest == huif.rs) || (huif.execDest == huif.rt)) || ((huif.memDest == huif.rs) || (huif.memDest == huif.rt))) begin
-    if (huif.execDest != 0) begin
+  if (huif.writeReg_exec && ((huif.execDest == huif.rs) || (huif.execDest == huif.rt))) begin
+    if (huif.memDest != 0) begin
+      huif.PCStall = 1;
+      huif.fetch_stall = 1;
+      huif.decode_stall = 1;
+      huif.decode_flush = 1;
+    end
+  end
+
+  if (huif.writeReg_mem && ((huif.memDest == huif.rs) || (huif.memDest == huif.rt))) begin
+    if (huif.memDest != 0) begin
       huif.PCStall = 1;
       huif.fetch_stall = 1;
       huif.decode_stall = 1;

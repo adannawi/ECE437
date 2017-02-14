@@ -142,6 +142,7 @@ end
 
 //dwait
 always_comb begin
+    ccif.dwait = 0;
   if((ccif.dREN == 1) || (ccif.dWEN == 1)) begin
     //RAM State dependent
     if(ccif.ramstate == FREE) begin
@@ -157,9 +158,6 @@ always_comb begin
       //Error state, probably not good to register this
       ccif.dwait = 1;
     end
-  end else begin
-    //No request, no issues there
-    ccif.dwait = 0;
   end
 end
 

@@ -414,7 +414,9 @@ module datapath (
   assign huif.ihit = ihit;
   assign huif.dhit = dhit;
   assign huif.branch = branch;
-  
+  assign huif.writeReg_mem = exif.writeRegOUT;
+  assign huif.writeReg_exec = deif.writeRegOUT;
+
   //Flush/Enable Signals
   //
   assign feif.flush = huif.fetch_flush;
