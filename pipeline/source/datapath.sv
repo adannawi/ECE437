@@ -20,6 +20,7 @@
 `include "decode_if.vh"
 `include "ifetch_if.vh"
 `include "exec_if.vh"
+`include "hazard_unit_if.vh"
 
 // alu op, mips op, and instruction type
 `include "cpu_types_pkg.vh"
@@ -84,7 +85,7 @@ module datapath (
   //request_unit_if ruif ();
 
   //    Fetch Reg interface
-  fetch_if feif ();
+  ifetch_if feif ();
 
   //    Decode Reg interface
   decode_if deif ();
@@ -98,10 +99,14 @@ module datapath (
   //  Controller Signals
   opcode_t opcode;
 
+	//  Hazard Unit Interface
+  hazard_unit_if huif ();
+
+
   logic branch;
 
   //Request unit signals ->desired in order to manage timing of reads/writes
-  //logic ireadreq;
+  logic ireadreq;
   //logic dreadreq;
   //logic dwritereq;
 
@@ -136,8 +141,7 @@ module datapath (
   //PC Nxt Standard Update <- These may need to change
   assign PCInc = PC + 4;
 
-  // Select when PC is on
-  assign PCEn = !dpif.dhit & dpif.ihit;//!dpif.halt & (!dpif.dhit & dpif.ihit);
+  //See bottom of datapath for PCEn
 
   //PC -> How to wait for sw/lw? (need not just cycles but also ihit/dhit)
   always_ff @(posedge CLK, negedge nRST) begin
@@ -374,7 +378,8 @@ module datapath (
   //Register Connections
   //outputs (some of thse are feedback signals)
   assign rw = mmif.rwOUTl;
-  //Other signals
+  //Other signalsgit checkout origin/pipeline source/ram.sv
+
   //Register Data Write MUX
   always_comb begin
      casez(mmif.RegWDsel)
@@ -395,15 +400,20 @@ module datapath (
   ////////////////////////////////
   /*    Hazard Detection Unit	*/
   ////////////////////////////////
+	// Instantation
+  hazard_unit hz1 (.CLK(CLK), .nRST(nRST), .huif(huif));
+
   //Flush/Enable Signals
   //
 
 
   ////////////////////////////////////////////////////////////////////////////////
 
-  assign ruif.ireadreq = !dpif.halt; //Troublesome, may be changed in pipeline now
-  //assign ruif.dreadreq = ctif.dreadreq;
-  //assign ruif.dwritereq = ctif.dwritereq;
+  ////////////////////////////////////////////////
+  /*    Datapath/Processor Running Logic	*/
+  ////////////////////////////////////////////////
+
+   //Troublesome, may be changed in pipeline now
   assign deif.dREN = ctif.dreadreq;
   assign deif.dWEN = ctif.dwritereq;
   assign ihit = dpif.ihit; //could just directly use dpif.ihit/dhit
@@ -428,6 +438,40 @@ module datapath (
       dmemaddr
   */
 
+  // Select when PC is on
+  assign PCEn = !dpif.dhit & dpif.ihit;//Need to add & !HazardStall
+
+  //This should be fine since clocked to mmif Reg now
+  always_comb begin
+		if(mmif.opcodeOUT == HALT) begin
+			dpif.halt = 1;
+        end else begin
+			dpif.halt = 0;
+		end
+  end
+
+  assign ireadreq = !dpif.halt;
+
+  //"Borrowed" and modified from Request Unit
+  //this should work properly since halt is clocked based on mmif opcode
+  always_ff @(posedge CLK, negedge nRST) begin
+    if(nRST == 0) begin
+      dpif.imemREN <= 0;
+    end else if (ihit == 1) begin
+      //Reset on ihit
+      dpif.imemREN <= 0;
+    end else begin
+      ruif.imemREN <= ireadreq;
+    end
+  end
+
+  assign dpif.imemREN = iREN; //Need to generate this elsewhere now
+  assign dpif.dmemREN = exif.dREN;
+  assign dpif.dmemWEN = exif.dWEN;
+  assign dpif.imemaddr = PC;
+  assign dpif.datomic = '0;
+
+/* This should not be necessary, clocked to mmif now
   //always_ff @(negedge CLK, negedge nRST) begin
   always_ff @(posedge CLK, negedge nRST) begin
     if(nRST == 0) begin
@@ -436,16 +480,13 @@ module datapath (
       //dpif.halt <= 1;
       //dpif.halt <= 1;
     end else begin
-      dpif.halt <= ctif.halt;
+      if(mmif.opcode == HALT) begin
+	dpif.halt <= 1;
       //dpif.halt <= 0;
     end
-  end
+  end*/
 
  // assign dpif.halt = ctif.halt;//!ruif.iREN;//!ruif.iREN;
-  assign dpif.imemREN = iREN; //Need to generate this elsewhere now
-  assign dpif.dmemREN = exif.dREN;
-  assign dpif.dmemWEN = exif.dWEN;
-  assign dpif.imemaddr = PC;
-  assign dpif.datomic = '0;
+
 
 endmodule
