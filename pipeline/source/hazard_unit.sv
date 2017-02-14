@@ -21,7 +21,6 @@ begin
   huif.memory_stall = 0;
   huif.memory_flush = 0;
   huif.execute_stall = 0;
-  huif.execute_flush = 0;
   huif.PCStall = 0;
 
   // General solution for all stalling
@@ -51,9 +50,9 @@ begin
   if ((huif.opcode == "BEQ" || huif.opcode == "BNE") & huif.branch) begin
     huif.fetch_flush = 1;
   end
-end
 
   // Flush the execute flush on a dhit and move LW into WB stage
-  assign huif.execute_flush = huif.dhit;
-
+  if (huif.dhit)
+    huif.execute_flush = 1;
+end
 endmodule
