@@ -3,22 +3,21 @@
 */
 
 
-`include "hazard_unit_if.vh"
-import cpu_types_pkg::*;
+`include "cpu_types_pkg.vh"
 
-module hazard_unit
-(
+import cpu_types_pkg::*;
+module hazard_unit (
   input CLK, nRST,
   hazard_unit_if.hu huif
 );
-always_comb:
+
+
+always_comb
 begin
   huif.fetch_stall = 0;
   huif.fetch_flush = 0;
   huif.decode_stall = 0;
   huif.decode_flush = 0;
-  huif.execute_stall = 0;
-  huif.execute_flash = 0;
   huif.memory_stall = 0;
   huif.memory_flush = 0;
   huif.PCStall = 0;
@@ -30,10 +29,10 @@ begin
   // Continue earlier instructions ahead
 
 
-
   // Handle Ld-Use Hazard
-  if (huif.memRead_Ex & ((execDest == rs) | (execDest == rt ))) |
-    (huif.memRead_Mem & ((memDest == rs) | (memDset == rt )))   begin
+  if ((huif.MemRead_Ex & ((huif.execDest == huif.rs) | (huif.execDest ==
+    huif.rt))) | (huif.MemRead_Mem & ((huif.memDest == huif.rs) | (huif.memDest
+    == huif.rt ))))   begin
     // check if execDest == 0 for load use??
     huif.PCStall = 1;
     huif.fetch_stall = 1;
@@ -41,8 +40,8 @@ begin
   end
 
   // Handle RAW Hazard
-  if ((execDest == rs) | (execDest == rt)) begin
-    if (execDest != 0) begin
+  if (((huif.execDest == huif.rs) | (huif.execDest == huif.rt)) | ((huif.memDest == huif.rs) | (huif.memDest == huif.rt))) begin
+    if (huif.execDest != 0) begin
       huif.PCStall = 1;
       huif.fetch_stall = 1;
       huif.decode_stall = 1;
@@ -50,7 +49,7 @@ begin
   end
 
   // Handle Control Hazard (Branches / Jumps)
-  if (opcode == "BEQ" || opcode == "BNE") begin
+  if ((huif.opcode == "BEQ" || huif.opcode == "BNE") & huif.branch) begin
     huif.fetch_flush = 1;
   end
 end
