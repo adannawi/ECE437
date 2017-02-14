@@ -30,7 +30,7 @@ interface exec_if;
   logic [1:0] RWDSelIN, RWDSelOUT;
   logic flush, enable;
   logic [1:0] PCSrc, RegDst, ALUSrc;
-  //logic [4:0] rd, rt, 
+  //logic [4:0] rd, rt,
   logic [4:0] rwOUT, rwIN; //Why are rd/rt here?
   //logic [25:0] addr;
   opcode_t opcodeOUT, opcodeIN;
@@ -42,7 +42,8 @@ interface exec_if;
   //logic [25:0] addr; -> this will get passed directly from insturction
 
   modport ex  (
-    input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN, opcodeIN, busBIN, resultIN, rwIN,
+    input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN, opcodeIN,
+    busBIN, resultIN, rwIN, flush, enable,
     output PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
 	   busBOUT, resultOUT, rwOUT
   );
