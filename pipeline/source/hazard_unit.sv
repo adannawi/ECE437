@@ -20,6 +20,8 @@ begin
   huif.decode_flush = 0;
   huif.memory_stall = 0;
   huif.memory_flush = 0;
+  huif.execute_stall = 0;
+  huif.execute_flush = 0;
   huif.PCStall = 0;
 
   // General solution for all stalling
@@ -28,11 +30,8 @@ begin
   // Freeze later instructions behind as long as stalled
   // Continue earlier instructions ahead
 
-
   // Handle Ld-Use Hazard
-  if ((huif.MemRead_Ex & ((huif.execDest == huif.rs) | (huif.execDest ==
-    huif.rt))) | (huif.MemRead_Mem & ((huif.memDest == huif.rs) | (huif.memDest
-    == huif.rt ))))   begin
+  if ((huif.MemRead_Ex & ((huif.execDest == huif.rs) | (huif.execDest == huif.rt))) | (huif.MemRead_Mem & ((huif.memDest == huif.rs) | (huif.memDest == huif.rt ))))   begin
     // check if execDest == 0 for load use??
     huif.PCStall = 1;
     huif.fetch_stall = 1;

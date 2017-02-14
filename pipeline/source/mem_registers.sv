@@ -12,8 +12,8 @@ begin
     mif.PCIncOUT <= 0;
     mif.writeRegOUT <= 0;
     mif.MemtoRegOUT <= 0;
-    mif.RWDSelOUT <= 0;
-    mif.opcodeOUT <= 0;
+    mif.RegWDSelOUT <= 0;
+    mif.opcodeOUT <= RTYPE;
     mif.dmemloadOUT <= 0;
     mif.resultOUT <= 0;
     mif.rwOUT <= 0;
@@ -21,8 +21,8 @@ begin
     mif.PCIncOUT <= 0;
     mif.writeRegOUT <= 0;
     mif.MemtoRegOUT <= 0;
-    mif.RWDSelOUT <= 0;
-    mif.opcodeOUT <= 0;
+    mif.RegWDSelOUT <= 0;
+    mif.opcodeOUT <= RTYPE;
     mif.dmemloadOUT <= 0;
     mif.resultOUT <= 0;
     mif.rwOUT <= 0;
@@ -30,7 +30,7 @@ begin
     mif.PCIncOUT <= mif.PCIncIN;
     mif.writeRegOUT <= mif.writeRegIN;
     mif.MemtoRegOUT <= mif.MemtoRegIN;
-    mif.RWDSelOUT <= mif.RWDSelIN;
+    mif.RegWDSelOUT <= mif.RegWDSelIN;
     mif.opcodeOUT <= mif.opcodeIN;
     mif.dmemloadOUT <= mif.dmemloadIN;
     mif.resultOUT <= mif.resultIN;
@@ -39,7 +39,7 @@ begin
     mif.PCIncOUT <= mif.PCIncOUT;
     mif.writeRegOUT <= mif.writeRegOUT;
     mif.MemtoRegOUT <= mif.MemtoRegOUT;
-    mif.RWDSelOUT <= mif.RWDSelOUT;
+    mif.RegWDSelOUT <= mif.RegWDSelOUT;
     mif.opcodeOUT <= mif.opcodeOUT;
     mif.dmemloadOUT <= mif.dmemloadOUT;
     mif.resultOUT <= mif.resultOUT;
