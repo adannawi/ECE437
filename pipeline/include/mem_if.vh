@@ -34,7 +34,7 @@ interface mem_if;
 
   modport my  (
     input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, opcodeIN,
-	  resultIN, rwIN, dmemloadIN,
+	  resultIN, rwIN, dmemloadIN, enable, flush,
     output PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, opcodeOUT,
     dmemloadOUT, resultOUT, rwOUT
   );
