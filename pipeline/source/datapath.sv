@@ -412,7 +412,7 @@ module datapath (
   assign huif.MemRead_Ex = exif.MemtoRegIN;
   assign huif.MemRead_Mem = mmif.MemtoRegIN;
   assign huif.ihit = ihit;
-  assign huif.dhit = ihit;
+  assign huif.dhit = dhit;
   assign huif.branch = branch;
   
   //Flush/Enable Signals
@@ -458,7 +458,7 @@ module datapath (
   */
 
   // Select when PC is on
-  assign PCEn = !dpif.dhit & dpif.ihit;//Need to add & !HazardStall
+  assign PCEn = !dpif.dhit & dpif.ihit & !huif.PCStall;//Need to add & !HazardStall
 
   //This should be fine since clocked to mmif Reg now
   always_comb begin
