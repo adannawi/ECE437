@@ -21,11 +21,12 @@ interface hazard_unit_if;
   logic memory_stall, memory_flush;
   logic MemRead_Ex, MemRead_Mem;
   logic ihit, dhit;
+  logic writeReg_mem, writeReg_exec;
   opcode_t opcode;
 
   modport hu (
     input rs, rt, opcode, execDest, memDest, MemRead_Ex, MemRead_Mem, ihit,
-    dhit, branch,
+    dhit, branch, writeReg_mem, writeReg_exec,
     output PCStall, fetch_stall, fetch_flush, decode_stall, decode_flush,
     execute_stall, execute_flush, memory_stall, memory_flush
   );
