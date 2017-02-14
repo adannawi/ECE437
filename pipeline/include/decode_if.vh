@@ -23,15 +23,15 @@ interface decode_if;
   logic dWENOUT, dWENIN;
   logic dRENOUT, dRENIN;
   logic [1:0] PCSrcOUT, PCSrcIN;
-  logic RWDSelOUT, RWDSelIN;
+  logic RegWDSelOUT, RegWDSelIN;
   logic [1:0] RegDstOUT, RegDstIN;
   logic [1:0] ALUSrcOUT, ALUSrcIN;
-  logic [4:0] rdIN, rdOUT; 
+  logic [4:0] rdIN, rdOUT;
   logic [4:0] rtIN, rtOUT;
   //logic [25:0] addr;
   aluop_t aluopIN, aluopOUT;
   opcode_t opcodeOUT, opcodeIN;
-  word_t ext_datIN, ext_datOUT;
+  word_t Ext_datIN, Ext_datOUT;
   word_t busAIN, busAOUT;
   word_t busBIN, busBOUT;
   word_t InstructionIN, InstructionOUT;
@@ -39,23 +39,23 @@ interface decode_if;
   logic enable;
 
   modport de  (
-    input PCIncIN, InstructionIN, writeRegIN, MemtoRegIN, RWDSelIN,
-    dWENIN, dRENIN, PCSrcIN, RegDstIN, ALUSrcIN, aluopIN, ext_datIN, busAIN,
+    input PCIncIN, InstructionIN, writeRegIN, MemtoRegIN, RegWDSelIN,
+    dWENIN, dRENIN, PCSrcIN, RegDstIN, ALUSrcIN, aluopIN, Ext_datIN, busAIN,
     busBIN, rtIN, rdIN, opcodeIN, flush, enable,
- 
-    output PCIncOUT, InstructionOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT,
-    dWENOUT, dRENOUT, PCSrcOUT, RegDstOUT, ALUSrcOUT, aluopOUT, ext_datOUT,
+
+    output PCIncOUT, InstructionOUT, writeRegOUT, MemtoRegOUT, RegWDSelOUT,
+    dWENOUT, dRENOUT, PCSrcOUT, RegDstOUT, ALUSrcOUT, aluopOUT, Ext_datOUT,
     busAOUT, busBOUT, rtOUT, rdOUT, opcodeOUT
     );
 
   modport tb  (
-    input PCIncOUT, InstructionOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT,
-    dWENOUT, dRENOUT, PCSrcOUT, RegDstOUT, ALUSrcOUT, aluopOUT, ext_datOUT,
+    input PCIncOUT, InstructionOUT, writeRegOUT, MemtoRegOUT, RegWDSelOUT,
+    dWENOUT, dRENOUT, PCSrcOUT, RegDstOUT, ALUSrcOUT, aluopOUT, Ext_datOUT,
     busAOUT, busBOUT, rtOUT, rdOUT, opcodeOUT,
 
-    output PCIncIN, InstructionIN, writeRegIN, MemtoRegIN, RWDSelIN,
-    dWENIN, dRENIN, PCSrcIN, RegDstIN, ALUSrcIN, aluopIN, ext_datIN, busAIN,
-    busBIN, rtIN, rdIN, opcodeIN, flush, enable 
+    output PCIncIN, InstructionIN, writeRegIN, MemtoRegIN, RegWDSelIN,
+    dWENIN, dRENIN, PCSrcIN, RegDstIN, ALUSrcIN, aluopIN, Ext_datIN, busAIN,
+    busBIN, rtIN, rdIN, opcodeIN, flush, enable
   );
 
 endinterface

@@ -22,36 +22,29 @@ interface exec_if;
   logic MemtoRegIN, MemtoRegOUT;
   logic dWENIN, dWENOUT;
   logic dRENIN, dRENOUT;
-  //logic branch;
-  //opcode_t opcodeOUT, opcodeIN;
-  //word_t instr;
-  //aluop_t aluop;
 
-  logic [1:0] RWDSelIN, RWDSelOUT;
+
+  logic [1:0] RegWDSelIN, RegWDSelOUT;
   logic flush, enable;
-  logic [1:0] PCSrc, RegDst, ALUSrc;
-  //logic [4:0] rd, rt,
-  logic [4:0] rwOUT, rwIN; //Why are rd/rt here?
-  //logic [25:0] addr;
+
+
+  logic [4:0] rwOUT, rwIN;
+
   opcode_t opcodeOUT, opcodeIN;
-  //word_t Ext_dat;
   word_t resultIN, resultOUT;
-  //word_t instrIN, instrOUT;
-  //word_t busAIN, busAOUT;
   word_t busBIN, busBOUT;
-  //logic [25:0] addr; -> this will get passed directly from insturction
 
   modport ex  (
-    input PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN, opcodeIN,
+    input PCIncIN, writeRegIN, MemtoRegIN, RegWDSelIN, dWENIN, dRENIN, opcodeIN,
     busBIN, resultIN, rwIN, flush, enable,
-    output PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
+    output PCIncOUT, writeRegOUT, MemtoRegOUT, RegWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
 	   busBOUT, resultOUT, rwOUT
   );
 
   modport tb  (
-    input PCIncOUT, writeRegOUT, MemtoRegOUT, RWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
+    input PCIncOUT, writeRegOUT, MemtoRegOUT, RegWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
 	   busBOUT, resultOUT, rwOUT,
-    output PCIncIN, writeRegIN, MemtoRegIN, RWDSelIN, dWENIN, dRENIN,
+    output PCIncIN, writeRegIN, MemtoRegIN, RegWDSelIN, dWENIN, dRENIN,
            opcodeIN, busBIN, resultIN, rwIN
 
   );

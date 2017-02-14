@@ -11,7 +11,9 @@ interface hazard_unit_if;
 
   import cpu_types_pkg::*;
 
-  logic rs, rt, branch, jump, execDest, memDest, PCStall;
+  //removed signals: jump
+  logic [4:0] rs, rt;
+  logic branch, execDest, memDest, PCStall;
   logic fetch_stall, fetch_flush;
   logic decode_stall, decode_flush;
   logic execute_stall, execute_flush;
