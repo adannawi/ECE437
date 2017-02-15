@@ -35,7 +35,7 @@ interface hazard_unit_if;
   logic memory_stall, memory_flush;
   logic MemRead_Ex, MemRead_Mem;
   logic ihit, dhit;
-  logic writeReg_mem, writeReg_exec;
+  logic writeReg_mem, writeReg_exec, writeReg_wb;
   opcode_t opcode;
 
   modport hu (
