@@ -71,8 +71,14 @@ begin
   end
 
   // Handle Control Hazard (Branches / Jumps)
-  if ((huif.opcode == "BEQ" || huif.opcode == "BNE") & huif.branch) begin
+  if ((huif.opcode == BEQ || huif.opcode == BNE) && huif.branch) begin
     huif.fetch_flush = 1;
+    huif.decode_flush = 1;
+  end
+
+  if (huif.opcode == JAL || huif.opcode == J || huif.opcode == JR) begin
+    huif.fetch_flush = 1;
+    huif.decode_flush = 1;
   end
 
   // Flush the execute flush on a dhit and move LW into WB stage

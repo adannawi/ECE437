@@ -181,7 +181,7 @@ module datapath (
           //Value from Register 31 -> Jump Return Addr
       2'b10: PCNxt = deif.busAOUT; //Intended to set Bus B to Reg31 for this instr
           //Go to location stored in register (some kind of program jump)
-      2'b11: PCNxt = {deif.PCIncOUT[31:28],addr,2'b00}; //Set Bus A to wherever the ADDR is stored for this
+      2'b11: PCNxt = {deif.PCIncOUT[31:29],deif.InstructionOUT[25:0],2'b00}; //Set Bus A to wherever the ADDR is stored for this
     endcase
   end
   ////////////////////////
@@ -340,7 +340,7 @@ module datapath (
   	//Branch selection logic
   always_comb begin
     branch = 0;
-    casez(opcode)
+    casez(deif.opcodeOUT)
       BEQ:  if(zero == 1) begin
               branch = 1;
             end
