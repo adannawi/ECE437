@@ -12,8 +12,14 @@ interface hazard_unit_if;
   import cpu_types_pkg::*;
 
   //removed signals: jump
+
+  // FORWARDING UNIT SIGNALS //
   logic [4:0] rs, rt;
-  logic [4:0] execDest, memDest;
+  logic [4:0] execDest, memDest, wbDest;
+  logic A_fw, B_fw;
+  logic [31:0] A_fwdata, B_fwdata;
+
+  // HAZARD UNIT SIGNALS //
   logic branch,  PCStall;
   logic fetch_stall, fetch_flush;
   logic decode_stall, decode_flush;
