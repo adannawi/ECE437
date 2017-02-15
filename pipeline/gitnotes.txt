@@ -1,0 +1,23 @@
+If there are issues with merges of files that are provided (or need to reset
+other files)  do the following:
+Change to local processors(2) directory and run:
+
+git checkout origin/pipeline <filepath>/<filename>.sv
+
+e.g.
+
+git checkout origin/pipeline source/ram.sv
+
+Copy the file over into the shared git, commit and push.
+
+///////////////////////////////////////////////////////////////
+
+Pushing/Pulling to/from repo branch from/to local branch
+
+PUSH:
+  git push -u origin <branchname>
+
+PULL:
+  git pull origin <repobranch>:<localbranch>
+
+///////////////////////////////////////////////////////////////
