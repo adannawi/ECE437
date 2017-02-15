@@ -432,7 +432,8 @@ module datapath (
   assign huif.writeReg_mem = exif.writeRegOUT;
   assign huif.writeReg_exec = deif.writeRegOUT;
   assign huif.PCSrc = deif.PCSrcOUT;
-
+  assign huif.wbDest = mmif.rwOUT;
+  assign huif.writeReg_wb = mmif.writeRegOUT;
 
   //Flush/Enable Signals
   //
