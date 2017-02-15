@@ -436,14 +436,14 @@ module datapath (
 
   //Flush/Enable Signals
   //
-  assign feif.flush = huif.fetch_flush & ihit;
+  assign feif.flush = huif.fetch_flush & (ihit | dhit);
   assign feif.enable = !huif.fetch_stall & ihit;
   assign deif.flush = huif.decode_flush & ihit;
-  assign deif.enable = !huif.decode_stall & ihit;
+  assign deif.enable = !huif.decode_stall & (ihit | dhit);
+  assign exif.flush = huif.execute_flush & ihit;
+  assign exif.enable = !huif.execute_stall & (ihit | dhit);
   assign mmif.flush = huif.memory_flush & ihit;
   assign mmif.enable = !huif.memory_stall & (ihit | dhit);
-  assign exif.flush = huif.execute_flush & (ihit | dhit);
-  assign exif.enable = !huif.execute_stall & ihit;
 
   ////////////////////////////////////////////////////////////////////////////////
 
