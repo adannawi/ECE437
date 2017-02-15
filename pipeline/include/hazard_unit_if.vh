@@ -13,13 +13,21 @@ interface hazard_unit_if;
 
   //removed signals: jump
 
+  /////////////////////////////
   // FORWARDING UNIT SIGNALS //
-  logic [4:0] rs, rt;
+  /////////////////////////////
+
+  logic [4:0] rs_f, rt_f;
   logic [4:0] execDest, memDest, wbDest;
-  logic A_fw, B_fw;
-  logic [31:0] A_fwdata, B_fwdata;
-  logic [31:0] wb_data, mem_data;
+  logic [1:0] A_fw, B_fw;
+  logic [1:0] ALUSrc;
+  logic writeReg_wb;
+
+  /////////////////////////
   // HAZARD UNIT SIGNALS //
+  /////////////////////////
+
+  logic [4:0] rs, rt;
   logic branch,  PCStall;
   logic fetch_stall, fetch_flush;
   logic decode_stall, decode_flush;
@@ -31,10 +39,10 @@ interface hazard_unit_if;
   opcode_t opcode;
 
   modport hu (
-    input rs, rt, opcode, execDest, memDest, wbDest, MemRead_Ex, MemRead_Mem, ihit,
-    dhit, branch, writeReg_mem, writeReg_exec, wb_data, mem_data,
+    input rs, rt, rs_f, rt_f, opcode, execDest, memDest, wbDest, MemRead_Ex, MemRead_Mem, ihit,
+    dhit, branch, writeReg_mem, writeReg_exec, ALUSrc, writeReg_wb,
     output PCStall, fetch_stall, fetch_flush, decode_stall, decode_flush,
-    execute_stall, execute_flush, memory_stall, memory_flush, A_fwdata, B_fwdata
+    execute_stall, execute_flush, memory_stall, memory_flush
   );
 
   modport tb (
