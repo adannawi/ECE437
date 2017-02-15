@@ -46,7 +46,7 @@ module datapath (
   word_t Ext_dat;
 
   //  Register Signals
-  word_t ALU_Bin;
+  word_t ALU_Bin, ALU_Ain, B_data;
   word_t busA; //Output from register file Read Location 1
   word_t busB; //Output from register file Read Location 2
 
@@ -254,13 +254,30 @@ module datapath (
     end
   end
 
+  /* FWDing Selection Muxes */
+  //A
+  always_comb begin
+    if(huif.A_fw == 1) begin
+      ALU_Ain = deif.busAOUT;
+    end else begin
+      ALU_Ain = huif.A_fwdata;
+    end
+  end
+  //B
+  always_comb begin
+    if(huif.B_fw == 1) begin
+      ALU_Bin = B_data;
+    end else begin
+      ALU_Bin = huif.B_fwdata;
+    end
+  end
   ////////////////////////
   /*	EXECUTE STAGE	*/
   ////////////////////////
   //Modules
   //ALU Connection
   alu ALU1(
-    .A(deif.busAOUT),
+    .A(ALU_Ain),
     .B(ALU_Bin),
     .aluop(deif.aluopOUT),
     .neg(neg),  //DC
@@ -289,12 +306,12 @@ module datapath (
   //Other signals
     //ALU Port B Selection MUX
     always_comb begin
-      ALU_Bin = 32'hECE43700;
+      B_data = 32'hECE43700;
       casez(deif.ALUSrcOUT)
-        2'b00: ALU_Bin = deif.busBOUT;
-        2'b01: ALU_Bin = deif.Ext_datOUT;
-        2'b10: ALU_Bin = {{25{1'b0}}, deif.InstructionOUT[10:6]}; //Shamt, easier to pull directly from instruction
-        2'b11: ALU_Bin = '0; //Not connected to anything meaningful, should not be used
+        2'b00: B_data = deif.busBOUT;
+        2'b01: B_data = deif.Ext_datOUT;
+        2'b10: B_data = {{25{1'b0}}, deif.InstructionOUT[10:6]}; //Shamt, easier to pull directly from instruction
+        2'b11: B_data = '0; //Not connected to anything meaningful, should not be used
       endcase
     end
   //Register Write Location Select (exif.Rw)
