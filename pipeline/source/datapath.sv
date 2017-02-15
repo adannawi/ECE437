@@ -229,7 +229,7 @@ module datapath (
 
 // Signal names for decode stage
 //	>Will be written into registers later if still needed
-  assign opcode = feif.opcodeOUT;
+`  assign opcode = feif.opcodeOUT;
   assign rs = feif.InstructionOUT[25:21];
   assign rt = feif.InstructionOUT[20:16];
   assign rd = feif.InstructionOUT[15:11];
@@ -254,23 +254,6 @@ module datapath (
     end
   end
 
-  /* FWDing Selection Muxes */
-  //A
-  always_comb begin
-    if(huif.A_fw == 1) begin
-      ALU_Ain = deif.busAOUT;
-    end else begin
-      ALU_Ain = huif.A_fwdata;
-    end
-  end
-  //B
-  always_comb begin
-    if(huif.B_fw == 1) begin
-      ALU_Bin = B_data;
-    end else begin
-      ALU_Bin = huif.B_fwdata;
-    end
-  end
   ////////////////////////
   /*	EXECUTE STAGE	*/
   ////////////////////////
@@ -296,12 +279,6 @@ module datapath (
   assign exif.opcodeIN = deif.opcodeOUT;
   assign exif.busBIN = deif.busBOUT;
   assign exif.resultIN = result;
-  //assign exif.RegDst = ;
-  //outputs (not to next pipe register)
-  //Ext_dat -> done in MUX, Lshift/adder for branchaddr
-  //Bus_B -> Also used in mux
-  //Rd -> used in RegDst MUX
-  //Rt -> used in Regdst mux
 
   //Other signals
     //ALU Port B Selection MUX
@@ -365,6 +342,26 @@ module datapath (
               branch = 1;
             end
       default: branch = 0;
+    endcase
+  end
+
+  /* FWDing Selection Muxes */
+  //A
+  always_comb begin
+    casez(huif.A_fw)
+      2'b00: ALU_Ain = deif.busAOUT;
+      2'b01: ALU_Ain = exif.resultOUT;
+      2'b10: ALU_Ain = RegWDat;
+      2'b11: ALU_Ain = 32'hECE43700
+    endcase
+  end
+  //B
+  always_comb begin
+    casez(huif.B_fw)
+      2'b00: ALU_Bin = B_data;
+      2'b01: ALU_Bin = exif.resultOUT;
+      2'b10: ALU_Bin = RegWDat;
+      2'b11: ALU_Bin = 32'hECE43700
     endcase
   end
 
@@ -434,6 +431,8 @@ module datapath (
   assign huif.branch = branch;
   assign huif.writeReg_mem = exif.writeRegOUT;
   assign huif.writeReg_exec = deif.writeRegOUT;
+  assign huif.PCSrc = deif.PCSrcOUT;
+
 
   //Flush/Enable Signals
   //
@@ -509,23 +508,5 @@ module datapath (
   assign dpif.dmemWEN = exif.dWENOUT;
   assign dpif.imemaddr = PC;
   assign dpif.datomic = '0;
-
-/* This should not be necessary, clocked to mmif now
-  //always_ff @(negedge CLK, negedge nRST) begin
-  always_ff @(posedge CLK, negedge nRST) begin
-    if(nRST == 0) begin
-      dpif.halt <= 0;
-    //end else if (ruif.iREN == 0) begin
-      //dpif.halt <= 1;
-      //dpif.halt <= 1;
-    end else begin
-      if(mmif.opcode == HALT) begin
-	dpif.halt <= 1;
-      //dpif.halt <= 0;
-    end
-  end*/
-
- // assign dpif.halt = ctif.halt;//!ruif.iREN;//!ruif.iREN;
-
 
 endmodule
