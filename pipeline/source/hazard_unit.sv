@@ -56,7 +56,7 @@ begin
     if (huif.memDest != 0) begin
       huif.PCStall = 1;
       huif.fetch_stall = 1;
-      huif.decode_stall = 1;
+      //huif.decode_stall = 1;
       huif.decode_flush = 1;
     end
   end
@@ -65,7 +65,7 @@ begin
     if (huif.memDest != 0) begin
       huif.PCStall = 1;
       huif.fetch_stall = 1;
-      huif.decode_stall = 1;
+      //huif.decode_stall = 1;
       huif.decode_flush = 1;
     end
   end

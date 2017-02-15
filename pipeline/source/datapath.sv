@@ -289,7 +289,8 @@ module datapath (
   //Other signals
     //ALU Port B Selection MUX
     always_comb begin
-      casez(ctif.ALUSrc)
+      ALU_Bin = 32'hECE43700;
+      casez(deif.ALUSrcOUT)
         2'b00: ALU_Bin = deif.busBOUT;
         2'b01: ALU_Bin = deif.Ext_datOUT;
         2'b10: ALU_Bin = {{25{1'b0}}, deif.InstructionOUT[10:6]}; //Shamt, easier to pull directly from instruction
@@ -310,7 +311,7 @@ module datapath (
   	//Logic for result selection for LUI
   always_comb begin
     if(deif.opcodeOUT == LUI) begin
-      result = {imm16,16'h0000};
+      result = {deif.InstructionOUT[15:0],16'h0000};
     end else begin
       result = ALU_out;
     end
@@ -369,7 +370,7 @@ module datapath (
 
   //outputs (not to next pipe register)
   assign dpif.dmemstore = exif.busBOUT;
-  assign dpif.dmemaddr = exif.resultIN;
+  assign dpif.dmemaddr = exif.resultOUT;
 
   ////////////////////////
   /*  Write Back STAGE	*/
@@ -419,13 +420,13 @@ module datapath (
 
   //Flush/Enable Signals
   //
-  assign feif.flush = huif.fetch_flush;
+  assign feif.flush = huif.fetch_flush & ihit;
   assign feif.enable = !huif.fetch_stall & ihit;
-  assign deif.flush = huif.decode_flush;
+  assign deif.flush = huif.decode_flush & ihit;
   assign deif.enable = !huif.decode_stall & ihit;
-  assign mmif.flush = huif.memory_flush;
+  assign mmif.flush = huif.memory_flush & ihit;
   assign mmif.enable = !huif.memory_stall & (ihit | dhit);
-  assign exif.flush = huif.execute_flush;
+  assign exif.flush = huif.execute_flush & (ihit | dhit);
   assign exif.enable = !huif.execute_stall & ihit;
 
   ////////////////////////////////////////////////////////////////////////////////
