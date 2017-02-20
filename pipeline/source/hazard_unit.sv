@@ -23,8 +23,8 @@ begin
   huif.execute_stall = 0;
   huif.execute_flush = 0;
   huif.PCStall = 0;
-  huif.A_fwd = 0;
-  huif.B_fwd = 0;
+  huif.A_fw = 0;
+  huif.B_fw = 0;
 
 
   // General solution for all stalling
@@ -44,22 +44,22 @@ begin
 
   if ((huif.memDest == huif.rs_f) || (huif.memDest == huif.rt_f) && huif.writeReg_mem) begin
     if (huif.memDest != 0) begin
-      huif.A_fwd = 01;
-      huif.B_fwd = 01;
+      huif.A_fw = 01;
+      huif.B_fw = 01;
     end
   end
 
   if ((huif.wbDest == huif.rs_f) || (huif.wbDest == huif.rt_f) && huif.writeReg_wb) begin
     if (huif.wbDest != 0) begin
-      huif.A_fwd = 10;
-      huif.B_fwd = 10;
+      huif.A_fw = 10;
+      huif.B_fw = 10;
     end
   end
 
   // Check for i-type and set B to ignore forwarding
   if (huif.ALUSrc == 01) begin
-    huif.A_fwd = 00;
-    huif.B_fwd = 00;
+    // huif.A_fw = 00; // We want to ignore B, but retain A I think?
+    huif.B_fw = 00;
   end
   /////////////////
   // HAZARD UNIT //
@@ -98,9 +98,11 @@ begin
   // Flush the execute flush on a dhit and move LW into WB stage //
   if (huif.dhit) begin
     huif.execute_flush = 1;
-
+  end
 
   // Handle RAW Hazard //
+  // Commented because this should now be handled in the forwarding unit
+  /*
   if (huif.writeReg_exec && ((huif.execDest == huif.rs) || (huif.execDest == huif.rt))) begin
     if (huif.memDest != 0) begin
       huif.PCStall = 1;
@@ -116,6 +118,7 @@ begin
       huif.decode_flush = 1;
     end
   end
+  */
 
 
 end
