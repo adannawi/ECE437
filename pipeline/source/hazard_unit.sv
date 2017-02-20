@@ -58,13 +58,18 @@ begin
 
   // Check for i-type and set B to ignore forwarding
   if (huif.ALUSrc == 01) begin
-    // huif.A_fw = 00; // We want to ignore B, but retain A I think?
+    huif.A_fw = 00; 
     huif.B_fw = 00;
   end
   /////////////////
   // HAZARD UNIT //
   /////////////////
 
+  // New case where ADD is in Decode but there's a LW in Execute.. Add NOP in Execute??
+
+
+  //
+  
   // Handle Ld-Use Hazard //
   if (huif.MemRead_Ex & ((huif.execDest == huif.rs) || (huif.execDest == huif.rt))) begin
 		if (huif.execDest != 0) begin
