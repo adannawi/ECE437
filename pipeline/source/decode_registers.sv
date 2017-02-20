@@ -25,6 +25,7 @@ begin
     dif.busBOUT <= 0;
     dif.rtOUT <= 0;
     dif.rdOUT <= 0;
+    dif.rsOUT <= 0;
     dif.opcodeOUT <= RTYPE;
   end else if (dif.flush) begin //Note these were originall (mistakenly?) assigning a value to the IN signals
     dif.PCIncOUT <= 0;
@@ -43,6 +44,7 @@ begin
     dif.busBOUT <= 0;
     dif.rtOUT <= 0;
     dif.rdOUT <= 0;
+    dif.rsOUT <= 0;
     dif.opcodeOUT <= RTYPE;
   end else if (dif.enable) begin
     dif.PCIncOUT <= dif.PCIncIN;
@@ -61,6 +63,7 @@ begin
     dif.busBOUT <= dif.busBIN;
     dif.rtOUT <= dif.rtIN;
     dif.rdOUT <= dif.rdIN;
+    dif.rsOUT <= dif.rsIN;
     dif.opcodeOUT <= dif.opcodeIN;
   end else begin
     dif.PCIncOUT <= dif.PCIncOUT;
@@ -79,6 +82,7 @@ begin
     dif.busBOUT <= dif.busBOUT;
     dif.rtOUT <= dif.rtOUT;
     dif.rdOUT <= dif.rdOUT;
+    dif.rsOUT <= dif.rsIN;
     dif.opcodeOUT <= dif.opcodeOUT;
   end
 end
