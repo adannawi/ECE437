@@ -21,7 +21,6 @@ interface hazard_unit_if;
   logic [4:0] execDest, memDest, wbDest;
   logic [1:0] A_fw, B_fw;
   logic [1:0] ALUSrc;
-  logic writeReg_wb;
 
   /////////////////////////
   // HAZARD UNIT SIGNALS //
@@ -42,7 +41,7 @@ interface hazard_unit_if;
     input rs, rt, rs_f, rt_f, opcode, execDest, memDest, wbDest, MemRead_Ex, MemRead_Mem, ihit,
     dhit, branch, writeReg_mem, writeReg_exec, ALUSrc, writeReg_wb,
     output PCStall, fetch_stall, fetch_flush, decode_stall, decode_flush,
-    execute_stall, execute_flush, memory_stall, memory_flush
+    execute_stall, execute_flush, memory_stall, memory_flush, A_fw, B_fw
   );
 
   modport tb (
