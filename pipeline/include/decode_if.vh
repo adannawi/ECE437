@@ -28,6 +28,7 @@ interface decode_if;
   logic [1:0] ALUSrcOUT, ALUSrcIN;
   logic [4:0] rdIN, rdOUT;
   logic [4:0] rtIN, rtOUT;
+  logic [4:0] rsIN, rsOUT;
   //logic [25:0] addr;
   aluop_t aluopIN, aluopOUT;
   opcode_t opcodeOUT, opcodeIN;
@@ -41,11 +42,11 @@ interface decode_if;
   modport de  (
     input PCIncIN, InstructionIN, writeRegIN, MemtoRegIN, RegWDSelIN,
     dWENIN, dRENIN, PCSrcIN, RegDstIN, ALUSrcIN, aluopIN, Ext_datIN, busAIN,
-    busBIN, rtIN, rdIN, opcodeIN, flush, enable,
+    busBIN, rtIN, rdIN, opcodeIN, flush, enable, rsIN,
 
     output PCIncOUT, InstructionOUT, writeRegOUT, MemtoRegOUT, RegWDSelOUT,
     dWENOUT, dRENOUT, PCSrcOUT, RegDstOUT, ALUSrcOUT, aluopOUT, Ext_datOUT,
-    busAOUT, busBOUT, rtOUT, rdOUT, opcodeOUT
+    busAOUT, busBOUT, rtOUT, rdOUT, opcodeOUT, rsOUT
     );
 
   modport tb  (
