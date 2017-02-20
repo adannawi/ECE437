@@ -225,11 +225,12 @@ module datapath (
     assign deif.Ext_datIN = Ext_dat;
     assign deif.rtIN = rt;
     assign deif.rdIN = rd;
+    assign deif.rsIN = rs;
     assign deif.opcodeIN = opcode;
 
 // Signal names for decode stage
 //	>Will be written into registers later if still needed
-`  assign opcode = feif.opcodeOUT;
+  assign opcode = feif.opcodeOUT;
   assign rs = feif.InstructionOUT[25:21];
   assign rt = feif.InstructionOUT[20:16];
   assign rd = feif.InstructionOUT[15:11];
@@ -352,7 +353,7 @@ module datapath (
       2'b00: ALU_Ain = deif.busAOUT;
       2'b01: ALU_Ain = exif.resultOUT;
       2'b10: ALU_Ain = RegWDat;
-      2'b11: ALU_Ain = 32'hECE43700
+      2'b11: ALU_Ain = 32'hECE43700;
     endcase
   end
   //B
@@ -361,7 +362,7 @@ module datapath (
       2'b00: ALU_Bin = B_data;
       2'b01: ALU_Bin = exif.resultOUT;
       2'b10: ALU_Bin = RegWDat;
-      2'b11: ALU_Bin = 32'hECE43700
+      2'b11: ALU_Bin = 32'hECE43700;
     endcase
   end
 
@@ -421,6 +422,8 @@ module datapath (
   hazard_unit hz1 (.CLK(CLK), .nRST(nRST), .huif(huif));
   assign huif.rs = rs;
   assign huif.rt = rt;
+  assign huif.rs_f = deif.rsOUT;  // Used for FWDing
+  assign huif.rt_f = deif.rtOUT; // Used for FWDing
   assign huif.opcode = exif.opcodeIN; //From what stage
   assign huif.execDest = exif.rwIN;
   assign huif.memDest = mmif.rwIN;
@@ -431,7 +434,8 @@ module datapath (
   assign huif.branch = branch;
   assign huif.writeReg_mem = exif.writeRegOUT;
   assign huif.writeReg_exec = deif.writeRegOUT;
-  assign huif.PCSrc = deif.PCSrcOUT;
+  // assign huif.PCSrc = deif.PCSrcOUT; // We don't need this I think, we need ALUSrc instead
+  assign huif.ALUSrc = deif.ALUSrcOUT;
   assign huif.wbDest = mmif.rwOUT;
   assign huif.writeReg_wb = mmif.writeRegOUT;
 
