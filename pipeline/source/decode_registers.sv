@@ -82,7 +82,7 @@ begin
     dif.busBOUT <= dif.busBOUT;
     dif.rtOUT <= dif.rtOUT;
     dif.rdOUT <= dif.rdOUT;
-    dif.rsOUT <= dif.rsIN;
+    dif.rsOUT <= dif.rsOUT;
     dif.opcodeOUT <= dif.opcodeOUT;
   end
 end

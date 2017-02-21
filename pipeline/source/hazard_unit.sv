@@ -11,28 +11,10 @@ module hazard_unit (
   hazard_unit_if.hu huif
 );
 
-
-always_comb
-begin
-  huif.fetch_stall = 0;
-  huif.fetch_flush = 0;
-  huif.decode_stall = 0;
-  huif.decode_flush = 0;
-  huif.memory_stall = 0;
-  huif.memory_flush = 0;
-  huif.execute_stall = 0;
-  huif.execute_flush = 0;
-  huif.PCStall = 0;
+//Forwarding unit
+always_comb begin
   huif.A_fw = 0;
   huif.B_fw = 0;
-
-
-  // General solution for all stalling
-  // While stalled, inject nop in place of stalled instr in next stage (as many
-  // nops as stalls
-  // Freeze later instructions behind as long as stalled
-  // Continue earlier instructions ahead
-
   /////////////////
   //  FORWARDING //
   /////////////////
@@ -42,44 +24,68 @@ begin
   // 10 - WB Data
   //////////////////
 
-  if ((huif.memDest == huif.rs_f) || (huif.memDest == huif.rt_f) && huif.writeReg_mem) begin
+  if ((huif.memDest == huif.rs_f) && huif.writeReg_mem) begin
     if (huif.memDest != 0) begin
-      huif.A_fw = 01;
-      huif.B_fw = 01;
+      huif.A_fw = 2'b01;
     end
   end
 
-  if ((huif.wbDest == huif.rs_f) || (huif.wbDest == huif.rt_f) && huif.writeReg_wb) begin
-    if (huif.wbDest != 0) begin
-      huif.A_fw = 10;
-      huif.B_fw = 10;
+	if ((huif.memDest == huif.rt_f) && huif.writeReg_mem) begin
+    if ((huif.memDest != 0) && (huif.ALUSrc == 2'b00))  begin
+      huif.B_fw = 2'b01;
     end
   end
 
+  if ((huif.wbDest == huif.rs_f) && huif.writeReg_wb) begin
+    if (huif.wbDest != 0)  begin
+      huif.A_fw = 2'b10;
+    end
+  end
+
+	if ((huif.wbDest == huif.rt_f) && huif.writeReg_wb) begin
+    if ((huif.wbDest != 0) && (huif.ALUSrc == 2'b00))begin
+      huif.B_fw = 2'b10;
+    end
+  end
+end
   // Check for i-type and set B to ignore forwarding
-  if (huif.ALUSrc == 01) begin
-    huif.A_fw = 00; 
-    huif.B_fw = 00;
-  end
+
   /////////////////
   // HAZARD UNIT //
   /////////////////
 
   // New case where ADD is in Decode but there's a LW in Execute.. Add NOP in Execute??
 
+  // General solution for all stalling
+  // While stalled, inject nop in place of stalled instr in next stage (as many
+  // nops as stalls
+  // Freeze later instructions behind as long as stalled
+  // Continue earlier instructions ahead
 
-  //
+  //Hazard Logic (Flush/Stall)
+always_comb begin
+  huif.fetch_stall = 0;
+  huif.fetch_flush = 0;
+  huif.decode_stall = 0;
+  huif.decode_flush = 0;
+  huif.memory_stall = 0;
+  huif.memory_flush = 0;
+  huif.execute_stall = 0;
+  huif.execute_flush = 0;
+  huif.PCStall = 0;
 
   // Handle Ld-Use Hazard //
-  if (huif.MemRead_Ex & ((huif.execDest == huif.rs) || (huif.execDest == huif.rt))) begin
+  if (huif.MemRead_Ex & huif.writeReg_exec & ((huif.execDest == huif.rs) || (huif.execDest == huif.rt))) begin
 		if (huif.execDest != 0) begin
 	   	huif.PCStall = 1;
     	huif.fetch_stall = 1;
-    	huif.decode_stall = 1;
+    	//huif.decode_stall = 1;
     	huif.decode_flush = 1;
+			//huif.execute_flush = 1;
 		end
   end
 
+	/*
 	if (huif.MemRead_Mem & ((huif.memDest == huif.rs) || (huif.memDest == huif.rt ))) begin
     if (huif.memDest != 0) begin
     	huif.PCStall = 1;
@@ -88,6 +94,15 @@ begin
     	huif.decode_flush = 1;
   	end
   end
+	*/
+	//Handle dependency where normally fw'd data gets flushed by either SW or LW
+	if ((huif.writeReg_mem && (huif.memDest == huif.rs) || (huif.memDest == huif.rt)) && ((huif.opcode == SW) || (huif.opcode == LW))) begin
+		  huif.PCStall = 1;
+    	huif.fetch_stall = 1;
+    	//huif.decode_stall = 1;
+    	huif.decode_flush = 1;
+		
+	end
 
   // Handle Control Hazard (Branches / Jumps) //
   if ((huif.opcode == BEQ || huif.opcode == BNE) && huif.branch) begin
@@ -100,7 +115,7 @@ begin
     huif.decode_flush = 1;
   end
 
-  // Flush the execute flush on a dhit and move LW into WB stage //
+  // Flush the execute reg on a dhit and move LW into WB stage //
   if (huif.dhit) begin
     huif.execute_flush = 1;
   end
@@ -124,7 +139,5 @@ begin
     end
   end
   */
-
-
 end
 endmodule
