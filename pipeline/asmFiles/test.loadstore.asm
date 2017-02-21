@@ -16,6 +16,8 @@
   sw    $4,4($2)
   sw    $5,8($2)
   sw    $7,12($2)
+  #nop  #for pipeline testing
+  #nop #^^^
   halt      # that's all
 
   org   0x00F0

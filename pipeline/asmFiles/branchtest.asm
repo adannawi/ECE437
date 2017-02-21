@@ -10,17 +10,17 @@
     ori   $6,$zero,0x80
     addi $2, $0, 0x0001
     addi $3, $0, 0x0001
-    beq $6, $7, b1
+    beq $6, $7, b1 #Should never be taken
     sw $2, 0($7)
-    beq $2, $3, b1
+    beq $2, $3, b1 #Shold always be taken
     sw $3, 4($7)
     sw $2, 0($6)
     halt
 
 b1: addi $4, $0, 0x0002
-    bne  $2, $3, b2
+    bne  $2, $3, b2 #Never taken
     sw $2, 0($7)
-    bne  $4, $2, b2
+    bne  $4, $2, b2 #Always Taken
     sw $3, 4($7)
     sw $2, 0($6)
     halt
