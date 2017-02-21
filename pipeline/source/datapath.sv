@@ -278,9 +278,21 @@ module datapath (
   assign exif.dWENIN = deif.dWENOUT;
   assign exif.dRENIN = deif.dRENOUT;
   assign exif.opcodeIN = deif.opcodeOUT;
-  assign exif.busBIN = deif.busBOUT;
   assign exif.resultIN = result;
 
+	//assign exif.busBIN = deif.busBOUT;
+	//MUX to select data store value
+	always_comb begin
+		if(huif.SWsel == 2'b00) begin
+			exif.busBIN = deif.busBOUT;
+		end else if (huif.SWsel == 2'b01) begin
+			exif.busBIN = exif.resultOUT;
+		end else if (huif.SWsel == 2'b10) begin
+			exif.busBIN = RegWDat;
+		end else begin
+			exif.busBIN = 32'hECE43700;
+		end
+	end
   //Other signals
     //ALU Port B Selection MUX
     always_comb begin
@@ -425,6 +437,7 @@ module datapath (
   assign huif.rs_f = deif.rsOUT;  // Used for FWDing
   assign huif.rt_f = deif.rtOUT; // Used for FWDing
   assign huif.opcode = exif.opcodeIN; //From what stage
+  assign huif.rfunct = funct_t'(deif.InstructionOUT[5:0]);
   assign huif.execDest = exif.rwIN;
   assign huif.memDest = mmif.rwIN;
   assign huif.MemRead_Ex = exif.MemtoRegIN;
