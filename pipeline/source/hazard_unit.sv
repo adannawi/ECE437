@@ -15,6 +15,7 @@ module hazard_unit (
 always_comb begin
   huif.A_fw = 0;
   huif.B_fw = 0;
+  huif.SWsel = 2'b00;
   /////////////////
   //  FORWARDING //
   /////////////////
@@ -24,6 +25,8 @@ always_comb begin
   // 10 - WB Data
   //////////////////
 
+
+	//ALU Input dependencies
   if ((huif.memDest == huif.rs_f) && huif.writeReg_mem) begin
     if (huif.memDest != 0) begin
       huif.A_fw = 2'b01;
@@ -47,6 +50,17 @@ always_comb begin
       huif.B_fw = 2'b10;
     end
   end
+
+	//SW Dependencies
+	if (huif.opcode == SW) begin
+		if ((huif.memDest == huif.rt_f) && huif.writeReg_mem) begin
+			huif.SWsel = 2'b01;
+		end else if ((huif.wbDest == huif.rt_f) && huif.writeReg_wb) begin
+			huif.SWsel = 2'b10;
+		end else begin
+			huif.SWsel = 2'b00;
+		end
+	end
 end
   // Check for i-type and set B to ignore forwarding
 
