@@ -36,16 +36,17 @@ interface hazard_unit_if;
   logic ihit, dhit;
   logic writeReg_mem, writeReg_exec, writeReg_wb;
   opcode_t opcode;
+  logic SWsel;
 
   modport hu (
     input rs, rt, rs_f, rt_f, opcode, execDest, memDest, wbDest, MemRead_Ex, MemRead_Mem, ihit,
     dhit, branch, writeReg_mem, writeReg_exec, ALUSrc, writeReg_wb,
     output PCStall, fetch_stall, fetch_flush, decode_stall, decode_flush,
-    execute_stall, execute_flush, memory_stall, memory_flush, A_fw, B_fw
+    execute_stall, execute_flush, memory_stall, memory_flush, A_fw, B_fw, SWsel
   );
 
   modport tb (
-    input PCStall, fetch_stall, fetch_flush, decode_stall, decode_flush,
+    input PCStall, fetch_stall, fetch_flush, decode_stall, decode_flush, SWsel,
     execute_stall, execute_flush, memory_stall, memory_flush,
     output rs, rt, opcode, execDest, memDest, MemRead_Ex, MemRead_Mem, ihit,
     dhit, branch
