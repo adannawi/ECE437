@@ -37,7 +37,7 @@ interface hazard_unit_if;
   logic ihit, dhit;
   logic writeReg_mem, writeReg_exec, writeReg_wb;
   opcode_t opcode;
-  logic SWsel;
+  logic [1:0] SWsel;
 
   modport hu (
     input rs, rt, rs_f, rt_f, opcode, execDest, memDest, wbDest, MemRead_Ex, MemRead_Mem, ihit, rfunct,
