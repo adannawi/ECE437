@@ -448,7 +448,7 @@ module datapath (
   assign huif.writeReg_mem = exif.writeRegOUT;
   assign huif.writeReg_exec = deif.writeRegOUT;
   // assign huif.PCSrc = deif.PCSrcOUT; // We don't need this I think, we need ALUSrc instead
-  assign huif.ALUSrc = deif.ALUSrcIN;
+  assign huif.ALUSrc = deif.ALUSrcOUT;
   assign huif.wbDest = mmif.rwOUT;
   assign huif.writeReg_wb = mmif.writeRegOUT;
 
