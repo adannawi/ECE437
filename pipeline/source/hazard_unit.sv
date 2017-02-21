@@ -69,7 +69,7 @@ begin
 
 
   //
-  
+
   // Handle Ld-Use Hazard //
   if (huif.MemRead_Ex & ((huif.execDest == huif.rs) || (huif.execDest == huif.rt))) begin
 		if (huif.execDest != 0) begin
