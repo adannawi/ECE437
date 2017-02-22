@@ -30,37 +30,35 @@ always_comb begin
   // 10 - WB Data
   //////////////////
 
-
-
 	//ALU Input dependencies
 	//Check Mem -> A FW
   if ((huif.memDest == huif.rs_f) && huif.writeReg_mem) begin
     if (huif.memDest != 5'b00000) begin
       huif.A_fw = 2'b01;
     end
+  end else if ((huif.wbDest == huif.rs_f) && huif.writeReg_wb) begin
+    if (huif.wbDest != 5'b00000)  begin
+      huif.A_fw = 2'b10;
+    end
   end
 
+  //Check WB -> A FW
+  
 
 	//Check Mem -> B FW
 	if ((huif.memDest == huif.rt_f) && huif.writeReg_mem) begin
     if ((huif.memDest != 5'b00000) && (huif.ALUSrc == 2'b00))  begin
       huif.B_fw = 2'b01;
     end
-  end
-
-	//Check WB -> A FW
-  if ((huif.wbDest == huif.rs_f) && huif.writeReg_wb) begin
-    if (huif.wbDest != 5'b00000)  begin
-      huif.A_fw = 2'b10;
-    end
-  end
-
-	//Check WB -> FW
-	if ((huif.wbDest == huif.rt_f) && huif.writeReg_wb) begin
+  end else if ((huif.wbDest == huif.rt_f) && huif.writeReg_wb) begin
     if ((huif.wbDest != 5'b00000) && (huif.ALUSrc == 2'b00))begin
       huif.B_fw = 2'b10;
     end
   end
+
+
+
+
 
 	//SW Dependencies
 	//Special case based on our design where data which could (should?) be on bus B
@@ -152,6 +150,7 @@ always_comb begin
   end
 
   // Flush the execute reg on a dhit and move LW into WB stage //
+  // This may need to change with Cache since ihit could still come with wREN/dWEN asserted
   if (huif.dhit) begin
     huif.execute_flush = 1;
   end
