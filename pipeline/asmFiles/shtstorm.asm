@@ -1,3 +1,7 @@
+# Ziad Dannawi
+# ASM file to test Jumps, Jals, JRs, and some branches in addition to loading
+#
+
 org 0x0000
 
 ori $7, $zero, 0
