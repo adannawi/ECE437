@@ -64,6 +64,14 @@ branchsw3:
 
 done:
 	lw $8, 0($1)
+	ori $10, $zero, 0
+	beq $10, $zero, brst
+
+brst:
+	sw $8, 0($1)
+	lw $8, 4($1)
+	sw $8, 4($1)
+	lw $8, 0($1)
 
 
 
