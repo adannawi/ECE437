@@ -1,3 +1,7 @@
+# Ziad Dannawi
+# ASM file to find hidden SW dependencies
+#
+
 org 0x0000
 
 ori $1, $zero, 1
@@ -9,6 +13,7 @@ add $4, $4, $1
 lw $6, 4($3)
 lw $5, 0($3) # $5 = 5
 add $4, $4, $5
+addi $7, $zero, 1
 sw $4, 8($3)
 
 halt
