@@ -65,7 +65,7 @@ always_comb begin
 	//SW Dependencies
 	//Special case based on our design where data which could (should?) be on bus B
 	//Needs to be forwarded for storage
-	if (huif.opcode == SW) begin
+	if (huif.opcode == SW) begin //RS OR RT
 		if ((huif.memDest == huif.rt_f) && huif.writeReg_mem) begin
 			huif.SWsel = 2'b01;
 		end else if ((huif.wbDest == huif.rt_f) && huif.writeReg_wb) begin
