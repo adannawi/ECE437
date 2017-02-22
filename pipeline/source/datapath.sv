@@ -62,6 +62,7 @@ module datapath (
 
   logic ihit, dhit; //halt;
   logic iREN;
+  //logic halt;
 
   logic [1:0] PCSrc;
   word_t PCInc;
@@ -497,14 +498,26 @@ module datapath (
   // Select when PC is on
   assign PCEn = !dpif.dhit & dpif.ihit & !huif.PCStall;//Need to add & !HazardStall
 
+
   //This should be fine since clocked to mmif Reg now
   always_comb begin
-		if(mmif.opcodeOUT == HALT) begin
+		if(mmif.opcodeIN == HALT) begin
 			dpif.halt = 1;
+      //halt = 1;
         end else begin
 			dpif.halt = 0;
+      //halt = 0;
 		end
   end
+/*
+  always_ff @(posedge CLK, negedge nRST) begin
+    if(nRST == 0) begin
+      dpif.halt <= 0;
+    end else begin
+      dpif.halt <= halt;
+    end
+  end
+*/
 
   assign ireadreq = !dpif.halt;
 
