@@ -48,9 +48,9 @@ interface hazard_unit_if;
 
   modport tb (
     input PCStall, fetch_stall, fetch_flush, decode_stall, decode_flush, SWsel,
-    execute_stall, execute_flush, memory_stall, memory_flush,
-    output rs, rt, opcode, execDest, memDest, MemRead_Ex, MemRead_Mem, ihit, rfunct,
-    dhit, branch
+    execute_stall, execute_flush, memory_stall, memory_flush, A_fw, B_fw,
+    output rs_f, rt_f, rs, rt, opcode, execDest, memDest, MemRead_Ex, MemRead_Mem, ihit, rfunct,
+    dhit, branch, wbDest, writeReg_mem, writeReg_exec, writeReg_wb, ALUSrc
   );
 
 endinterface
