@@ -1,3 +1,7 @@
+// Ziad Dannawi
+// Test bench for hazard/forward unit
+//
+
 `include "hazard_unit_if.vh"
 `timescale 1 ns / 1 ns
 
@@ -32,6 +36,11 @@ module hazard_unit_tb;
     hutb.ihit = 0;
     hutb.dhit = 0;
     hutb.branch = 0;
+    hutb.rs_f = 0;
+    hutb.rt_f = 0;
+    hutb.ALUSrc = 0;
+    hutb.wbDest = 0;
+    hutb.writeReg_wb = 0;
     @(posedge CLK);
     @(posedge CLK);
 
@@ -49,6 +58,19 @@ module hazard_unit_tb;
     hutb.execDest = 3;
     hutb.memDest = 4;
     @(posedge CLK);
+    @(posedge CLK);
+
+    // Forwarding test case
+    @(negedge CLK);
+    hutb.ALUSrc = 0;
+    hutb.wbDest = 1;
+    hutb.rt_f = 1;
+    hutb.writeReg_wb = 1; // Should give B_fw = 10
+    @(posedge CLK);
+    @(posedge CLK);
+    @(posedge CLK);
+    @(negedge CLK);
+    hutb.rs_f = 1; // Should give A_fw = 10
     @(posedge CLK);
   end
 
