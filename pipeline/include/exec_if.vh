@@ -24,7 +24,7 @@ interface exec_if;
   logic dRENIN, dRENOUT;
 
 
-  logic [1:0] RegWDSelIN, RegWDSelOUT;
+  logic RegWDSelIN, RegWDSelOUT;
   logic flush, enable;
 
 

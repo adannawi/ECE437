@@ -24,7 +24,7 @@ interface mem_if;
   //logic dREN;
   logic [4:0] rwIN, rwOUT;
   opcode_t opcodeOUT, opcodeIN;
-  logic [1:0] RegWDSelIN, RegWDSelOUT;
+  logic RegWDSelIN, RegWDSelOUT;
   logic enable, flush;
   word_t resultIN, resultOUT;
   //word_t busB;
