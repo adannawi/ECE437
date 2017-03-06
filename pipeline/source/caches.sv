@@ -12,6 +12,23 @@ module caches (
   caches_if cif
 );
 
+  //What we care about for CIF (single core)
+  /*
+    inputs
+      iwait
+      iload
+      dwait
+      dload
+
+    outputs
+      dREN
+      dWEN
+      daddr
+      dstore
+      iREN
+      iaddr
+
+
   // icache
   //icache  ICACHE(dcif, cif);
   // dcache
