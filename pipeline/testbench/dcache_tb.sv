@@ -34,7 +34,7 @@ initial begin
 	@(posedge CLK);
 
 	//Load into the cache
-	dif.dmemaddr = 32'h00000000;
+	dif.dmemaddr = 4*1;
 	dif.dmemstore = 32'hDEADBEEF;
 	dif.dmemREN = 1;
 	dif.dmemWEN = 0;
@@ -44,6 +44,32 @@ initial begin
 
 	@(posedge CLK); // dhit??
 
-	dif
+	dif.dmemaddr = 4*2;
+	dif.dmemstore = 32'hDEADBEEF;
+	dif.dmemREN = 1;
+	dif.dmemWEN = 0;
+	dif.halt = 0;
+	cif.dwait = 0;
+	cif.dload = 32'habcd4321;
+
+	@(posedge CLK);
+
+	// Case: Check for hit
+	dif.dmemaddr = 4*1;
+	dif.halt = 0;
+	cif.dwait = 0;
+	#3;
+	if (dif.dhit == 1) begin
+		$display("Hit, nice!");
+	end else begin
+		$display("Miss, nooo!");
+	end
+	if (dif.dmemload == 32'habcd1234) begin
+		$display("Data is good");
+	end else begin
+		$display("Data is bad");
+	end
+
+	
 end
 endprogram

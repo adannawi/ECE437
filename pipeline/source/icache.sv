@@ -21,7 +21,7 @@ typedef struct packed {
 
 icset[15:0] isets;
 icachef_t icache;
-integer i;
+integer i = 0;
 logic miss;
 
 //	Register Sets
@@ -39,6 +39,11 @@ begin
 			isets[icache.idx].tag <= icache.tag;
 			isets[icache.idx].value <= icif.iload;
 		end
+	else begin
+			isets[icache.idx].valid <= isets[icache.idx].valid;
+			isets[icache.idx].tag <= isets[icache.idx].tag;
+			isets[icache.idx].value <= isets[icache.idx].value;
+	end
 	end
 end
 
@@ -49,7 +54,6 @@ assign icache = icachef_t'(dcif.imemaddr);
 assign miss = !dcif.ihit && dcif.imemREN; // for my use
 assign dcif.ihit = (isets[icache.idx].valid && (isets[icache.idx].tag == icache.tag)) && dcif.imemREN;
 assign dcif.imemload = isets[icache.idx].value;
-// ccif.iREN
-// ccif.iaddr
+
 
 endmodule
