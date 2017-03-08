@@ -27,12 +27,12 @@ module caches (
       dstore
       iREN
       iaddr
-
+  */
 
   // icache
-  //icache  ICACHE(dcif, cif);
+  icache  ICACHE(dcif, cif);
   // dcache
-  //dcache  DCACHE(dcif, cif);
+  dcache  DCACHE(dcif, cif);
 
   // dcache invalidate before halt handled by dcache when exists
   assign dcif.flushed = dcif.halt;
