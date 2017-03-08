@@ -6,8 +6,8 @@
 module icache (
 	input CLK, nRST,
 	caches_if.icache icif,
-	datapath_cache_if dcif,
-	cache_control_if ccif
+	datapath_cache_if dcif
+	//cache_control_if ccif
 	);
 
 import cpu_types_pkg::*;
@@ -23,6 +23,7 @@ icset[15:0] isets;
 icachef_t icache;
 integer i;
 
+//	Register Sets
 always_ff @ (posedge CLK, negedge nRST)
 begin
 	if (!nRST) begin
@@ -32,17 +33,19 @@ begin
 			isets[i].value <= 0;
 		end
 	end else begin
-		if (dcif.imemREN && !ccif.iwait) begin
+		if (dcif.imemREN && !icif.iwait) begin
 			isets[icache.idx].valid <= 1;
 			isets[icache.idx].tag <= icache.tag;
-			isets[icache.idx].value <= ccif.iload;
+			isets[icache.idx].value <= icif.iload;
 		end
 	end
 end
 
-assign icache = icachef_t'(dcif.imemaddr)
+assign icif.iaddr = dcif.iaddr;
+assign icif.iREN = !dcif.ihit && dcif.imemREN;
+assign icache = icachef_t'(dcif.imemaddr);
 // Hit Logic //
-assign dcif.hit = (isets[icache.idx].valid && (isets[icache.idx].tag == icache.tag)) && dcif.imemREN;
+assign dcif.ihit = (isets[icache.idx].valid && (isets[icache.idx].tag == icache.tag)) && dcif.imemREN;
 assign dcif.imemload = isets[icache.idx].value;
 // ccif.iREN
 // ccif.iaddr
