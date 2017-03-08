@@ -6,7 +6,7 @@
 module icache (
 	input CLK, nRST,
 	caches_if.icache icif,
-	datapath_cache_if dcif
+	datapath_cache_if.icache dcif
 	//cache_control_if ccif
 	);
 
@@ -22,6 +22,7 @@ typedef struct packed {
 icset[15:0] isets;
 icachef_t icache;
 integer i;
+logic miss;
 
 //	Register Sets
 always_ff @ (posedge CLK, negedge nRST)
@@ -33,7 +34,7 @@ begin
 			isets[i].value <= 0;
 		end
 	end else begin
-		if (dcif.imemREN && !icif.iwait) begin
+		if (icif.iREN && !icif.iwait) begin
 			isets[icache.idx].valid <= 1;
 			isets[icache.idx].tag <= icache.tag;
 			isets[icache.idx].value <= icif.iload;
@@ -41,10 +42,11 @@ begin
 	end
 end
 
-assign icif.iaddr = dcif.iaddr;
+assign icif.iaddr = dcif.imemaddr;
 assign icif.iREN = !dcif.ihit && dcif.imemREN;
 assign icache = icachef_t'(dcif.imemaddr);
 // Hit Logic //
+assign miss = !dcif.ihit && dcif.imemREN; // for my use
 assign dcif.ihit = (isets[icache.idx].valid && (isets[icache.idx].tag == icache.tag)) && dcif.imemREN;
 assign dcif.imemload = isets[icache.idx].value;
 // ccif.iREN
