@@ -50,7 +50,7 @@ module dcache (
 
 	//Counts
 	word_t count;
-	word_t miss_count;
+	word_t miss;
 	word_t hit_count;
 	word_t block_data;
 
@@ -62,7 +62,7 @@ module dcache (
 	//Accounts for every way but not the block within the way
 	logic [15:0] cWEN;
 
-	logic [7:0] lru;dhit
+	logic [7:0] lru;
 	logic dhit;
 
     //   26 bits tag | 3 bits idx | 1 bit block offset | 2 bits of byte offset (4 bytes/32 bits)
@@ -156,16 +156,17 @@ end
 //Miss Counter
 always_ff @(posedge CLK, negedge nRST) begin
 	if (nRST == 0) begin
-		hit_count <= 0;
-	end else if (miss_count) begin
-		hit_count <= hit_count + 1;
+		miss_count <= 0;
+	end else if (miss && state = FD1) begin
+		miss_count <= miss_count + 1;
 	end else begin
-		hit_count <= hit_count;
+		miss_count <= miss_count;
 	end
 end
 
 //Overall count
 assign count = hit_count - miss_count;
+assign miss = !dhit;
 
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
@@ -437,11 +438,95 @@ always_comb begin
 	
 	//Next State Logic
 	always_comb begin
-		if (state == IDLE) begin
-			if(dmemREN || dmemWEN) begin
-				//if (!hit & )
+		//if (state == IDLE) begin
+		//	if(dmemREN || dmemWEN) begin
+		//		//if (!hit & )
+		//	end
+		//end
+
+		casez(state)
+			IDLE: begin
+				if (miss & (dsets[dcache.idx].way1.dirty | dsets[dcache.idx].way2.dirty)) begin
+					next_state = WB1;
+				end
+
+				if (miss & (!dsets[dcache.idx].way1.dirty & !dsets[dcache.idx].way2.dirty)) begin
+					next_state = FD1;
+				end
+
+				if (hit) begin
+					next_state = IDLE;
+				end
+
+				if (dpif.halt) begin
+					next_state = DCHC;
+				end
 			end
-		end
+
+			WB1: begin
+				if (!dwait) begin
+					next_state = WB2;
+				end
+			end
+
+			WB2: begin
+				if (!dwait) begin
+					next_state = FD1;
+				end
+			end
+
+			FD1: begin
+				if (!dwait) begin
+					next_state = FD2;
+				end 
+			end
+
+			FD2: begin
+				if (!dwait) begin
+					next_state = IDLE;
+				end
+			end
+
+			DCHC: begin // Need way to check if dirty or not
+				for (i = 0; i < 8; i++) begin
+					if (dsets[i].way1.dirty | dsets[i].way2.dirty) begin
+						next_state = WBD1;
+					end else begin
+						next_state = WRCNT;
+					end
+				end
+			end
+
+			WBD1: begin
+				if (!dwait) begin
+					next_state = WBD2;
+				end
+			end
+
+			WBD2: begin
+				if (!dwait) begin
+					next_state = INVAL;
+				end
+			end
+
+			INVAL: begin
+				next_state = DCHC;
+			end
+
+			WRCNT: begin
+				if (!dwait) begin
+					next_state = FLUSH;
+				end
+			end
+
+	end
+
+	// Output Logic
+	always_comb begin
+		// Defaults 
+//		casez(state)
+//			IDLE:
+
 	end
 
 			
