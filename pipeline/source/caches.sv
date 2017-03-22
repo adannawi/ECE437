@@ -11,7 +11,8 @@ module caches (
   datapath_cache_if.cache dcif,
   caches_if cif
 );
-
+  caches_if.icache icif ();
+  caches_if.dcache dcif ();
   //What we care about for CIF (single core)
   /*
     inputs
@@ -30,7 +31,7 @@ module caches (
   */
 
   // icache
-  icache  ICACHE(dcif, cif);
+  icache  ICACHE(icif, cif);
   // dcache
   dcache  DCACHE(dcif, cif);
 
