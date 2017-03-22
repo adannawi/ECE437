@@ -16,6 +16,16 @@ add wave -noupdate -expand -label sim:/dcache_tb/dif/Group1 -group {Region: sim:
 add wave -noupdate -expand -label sim:/dcache_tb/dif/Group1 -group {Region: sim:/dcache_tb/dif} /dcache_tb/dif/dmemload
 add wave -noupdate -expand -label sim:/dcache_tb/dif/Group1 -group {Region: sim:/dcache_tb/dif} /dcache_tb/dif/dmemstore
 add wave -noupdate -expand -label sim:/dcache_tb/dif/Group1 -group {Region: sim:/dcache_tb/dif} /dcache_tb/dif/dmemaddr
+add wave -noupdate -expand -group DCache /dcache_tb/DUT/state
+add wave -noupdate -expand -group DCache /dcache_tb/DUT/next_state
+add wave -noupdate -expand -group DCache /dcache_tb/DUT/dsets
+add wave -noupdate -expand -group DCache /dcache_tb/DUT/dcache.tag
+add wave -noupdate -expand -group DCache /dcache_tb/DUT/miss
+add wave -noupdate -expand -group DCache /dcache_tb/DUT/count
+add wave -noupdate -expand -group DCache /dcache_tb/DUT/miss_count
+add wave -noupdate -expand -group DCache /dcache_tb/DUT/hit_count
+add wave -noupdate -expand -group DCache /dcache_tb/DUT/lru
+add wave -noupdate -expand -group DCache /dcache_tb/DUT/dhit
 TreeUpdate [SetDefaultTree]
 WaveRestoreCursors {{Cursor 1} {62 ns} 0}
 quietly wave cursor active 1

@@ -15,7 +15,7 @@ module dcache_tb;
 	caches_if cif (); 
 	datapath_cache_if dif ();
 	//test PROG (CLK, nRST, cif, dif);
-	// PUT DCACHE DUT HERE
+	dcache DUT (CLK, nRST, dif, cif);
 
 	//tb signals to set for "datapath": halt, dmemREN, dmemWEN, dmemstore, dmemaddr,
     //tb signals to read 'from' "datapath":  dhit, dmemload, flushed
