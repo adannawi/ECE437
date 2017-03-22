@@ -169,6 +169,7 @@ always_ff @(posedge CLK, negedge nRST) begin
 	end
 end
 
+  // map datapath
 //Overall count
 assign count = hit_count - miss_count;
 assign miss = !dhit;
