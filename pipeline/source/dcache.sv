@@ -3,7 +3,7 @@
 `include "datapath_cache_if.vh"
 
 module dcache (
-	input CLK, nRST,
+	input logic CLK, nRST,
 	datapath_cache_if.dcache dcif,
 	caches_if.dcache cif
 	);
@@ -58,7 +58,7 @@ module dcache (
 	logic writecounter;
 
 	// State Machine Output variables
-	//logic [15:0] clean; //Resets to dirty bits on read from mem
+	logic [15:0] clean; //Resets to dirty bits on read from mem
 	logic word_sel;
 	logic memtocache;
 
@@ -82,6 +82,7 @@ module dcache (
 	//Indicates next dirty data to write back
 	logic [3:0] next_dirty;
 	logic some_dirty;
+
 
     //   26 bits tag | 3 bits idx | 1 bit block offset | 2 bits of byte offset (4 bytes/32 bits)
 	
@@ -132,8 +133,8 @@ always_comb begin
 	//Way 2
 	end else if ((dcache.tag == dsets[dcache.idx].way2.tag) && dsets[dcache.idx].way2.valid) begin
 		//If the tag matches and data is valid, must be one blocq or other
-		if (dcif.dmemload.blkoff == 0) begin
-			block_read = dsets[i].way2.word1;
+		if (dcache.blkoff == 0) begin
+			dcif.dmemload = dsets[i].way2.word1;
 		end else begin
 			dcif.dmemload = dsets[i].way2.word2;
 		end
@@ -177,15 +178,16 @@ assign miss = !dhit;
 
 
 /////////////////////////////////////////////////////////////
-//					Value to store to memory
+//					Memory address to write to
 /////////////////////////////////////////////////////////////
 //Store value
 
 always_comb begin
 	if (writecounter) begin
-		cif.dstore = count;
+		cif.daddr = 32'h00003100;
 	end else begin
-		cif.dstore = mem_addr;
+		//Change to select from cache based on data idx/data way values
+		cif.daddr = mem_addr;
 	end // end else
 end
 
@@ -314,6 +316,22 @@ end
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
 
+
+/////////////////////////////////////////////////////////////
+//					Clean setting for WB
+/////////////////////////////////////////////////////////////
+//Store value
+
+always_comb begin
+	clean = '0;
+	if (state == WBD2) begin
+		clean[next_dirty] = 1;
+	end
+end
+
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+
 /////////////////////////////////////////////////////////////
 //Cache Write Enable logic (cWEN)
 /////////////////////////////////////////////////////////////
@@ -395,8 +413,6 @@ end
 //by adding LRU to i*2 which will be useful for block replacement
 always_ff @(posedge CLK, negedge nRST) begin
 
-	lru <= lru;
-
 	if (!nRST) begin 
 		lru <= '0;
 
@@ -429,12 +445,14 @@ always_ff @(posedge CLK, negedge nRST) begin
 	end else if (dcif.dmemREN && (state == IDLE) && dhit) begin
 		//Check only given idx, match 
 		if (dsets[dcache.idx].way1.tag == dcache.tag) begin
-			lru[dcache.idx] = 1;
+			lru[dcache.idx] <= 1;
 
-		end else if( dsets[j].way2.tag == dcache.tag) begin
-			lru[dcache.idx] = 0;
+		end else if (dsets[dcache.idx].way2.tag == dcache.tag) begin
+			lru[dcache.idx] <= 0;
 		end
 
+	end else begin
+		lru <= lru;
 	end 
 end
 
@@ -446,17 +464,18 @@ end
 /////////////////////////////////////////////////////////////
 //					  Next Dirty to WB
 /////////////////////////////////////////////////////////////
-
+logic [2:0] k;
 //For selecting next dirty value to write back
 always_comb begin
-	next_dirty = '0;
+	//Defaults
+	next_dirty = 0;
 	some_dirty = 0;
-	for (i = 0; i < 8; i++) begin
-		if (dsets[i].way1.dirty) begin
-			next_dirty = i * 2;
+	for (k= 0; k < 8; k++) begin
+		if (dsets[k].way1.dirty) begin
+			next_dirty = {k,1'b0};
 			some_dirty = 1;
-		end else if (dsets[i].way2.dirty) begin
-			next_dirty = i * 2 + 1;
+		end else if (dsets[k].way2.dirty) begin
+			next_dirty = {k,1'b1};
 			some_dirty = 1;			
 		end
 	end // for (i = 0; i < 8; i++)
@@ -471,23 +490,23 @@ end
 
 //Selects the location that memory will be written to
 always_comb begin
-	mem_addr = 32'hECE43700; //Error value, this should never be hit
+	cif.daddr = 32'hECE43700; //Error value, this should never be hit
 	data_way = 0;
 	if ((state == WBD1) || (state == WBD2)) begin
 		//Select based off of next_dirty
-		data_way = dirty_sel[0]
-		data_way = dirty_sel[3:1]
-		if (dirty_sel[0] == 0) begin
+		data_way = next_dirty[0];
+		data_idx = next_dirty[3:1];
+		if (next_dirty[0] == 0) begin
 			//Select Way 1
-			mem_addr = {dsets[dirty_sel[3:1]].way1.tag, dirty_sel[3:1], word_sel, 2'b00};
-		end else if (dirty_sel[1] == 1) begin
+			mem_addr = {dsets[next_dirty[3:1]].way1.tag, next_dirty[3:1], word_sel, 2'b00};
+		end else if (next_dirty[1] == 1) begin
 			//Select Way 2
-			mem_addr = {dsets[dirty_sel[3:1]].way2.tag, dirty_sel[3:1], word_sel, 2'b00};
+			mem_addr = {dsets[next_dirty[3:1]].way2.tag, next_dirty[3:1], word_sel, 2'b00};
 		end
 
 	end else begin
 		//Select based off of current data trying to be written and LRU
-		data_way = lru[dcache.idx]
+		data_way = lru[dcache.idx];
 		data_idx = dcache.idx;
 		if (lru[dcache.idx] == 0) begin
 			//Select Way 1
@@ -505,6 +524,36 @@ end
 ////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
 
+/////////////////////////////////////////////////////////////
+//				 Memory Write data Selection
+/////////////////////////////////////////////////////////////
+
+//Selects the value that memory will be written
+always_comb begin
+	cif.dstore = 32'hECE43700;
+
+	//Write counter
+	if (writecounter) begin
+		cif.dstore = count;
+
+	//Write data from cache
+	end else if (data_way) begin
+		if (word_sel) begin
+			cif.dstore = dsets[data_idx].way2.word2;
+		end else begin
+			cif.dstore = dsets[data_idx].way2.word1;
+		end
+	end else begin
+		if (word_sel) begin
+			cif.dstore = dsets[data_idx].way1.word2;
+		end else begin
+			cif.dstore = dsets[data_idx].way1.word1;
+		end
+	end
+end
+		//Write 
+////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////
 //					  State Machine
@@ -555,7 +604,7 @@ end
 					next_state = IDLE;
 
 				//On halt when not already getting data, go to write back dirty stages
-				end else if (dpif.halt) begin
+				end else if (dcif.halt) begin
 					next_state = DCHK;
 				end
 			end
