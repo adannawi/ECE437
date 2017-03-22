@@ -12,12 +12,16 @@ module dcache_tb;
 
 	always #(PERIOD/2) CLK++;
 
-	caches_if cif ();
+	caches_if cif (); 
 	datapath_cache_if dif ();
 	//test PROG (CLK, nRST, cif, dif);
 	// PUT DCACHE DUT HERE
 
+	//tb signals to set for "datapath": halt, dmemREN, dmemWEN, dmemstore, dmemaddr,
+    //tb signals to read 'from' "datapath":  dhit, dmemload, flushed
 
+    //tb signals to set for "mem control": dload, dwait
+    //tb signals to read for "mem control": dREN, dWEN, daddr, dstore
 
 
 //program test
@@ -78,11 +82,23 @@ end
 
 
 task memresponse(
-	input word_t data;
+	input word_t data
 	);
+	begin
+		//Give data values, toggle dwait to simulate memory response
+		
+		@(negedge CLK);
+		if (cif.dREN | cif.dWEN) begin
+			cif.dwait = 1;
+			cif.dload = data;
+		end else begin
+			cif.dload = 32'hECE43700;
+		end
+		@(posedge CLK);
+		cif.dwait = 0;
+	end
+endtask 
 
-
-endtask : sendmemdata
 task wait1 ();
     begin
 	@(posedge CLK);
