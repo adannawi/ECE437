@@ -107,7 +107,7 @@ module dcache (
 
 assign dcache = dcachef_t'(dcif.dmemaddr);
 //Very close to the logic for dmemload setting
-assign dcif.dhit = (dcif.dmemWEN || dcif.dmemREN) && ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) || ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1));
+assign dcif.dhit = (state == IDLE) && (dcif.dmemWEN || dcif.dmemREN) && ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) || ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1));
 assign dhit = dcif.dhit; //Purely to make it easier to reference
 
 
@@ -289,12 +289,14 @@ begin
 				dsets[dcache.idx].way1.word2 <= block_data;
 				dsets[dcache.idx].way1.dirty <= 0;
 				dsets[dcache.idx].way1.valid <= 1;
+				dsets[dcache.idx].way1.tag <= dcache.tag;
 
 			end else if (cWEN[{dcache.idx,1'b1}] == 1) begin
 				//If not first, Write to second way
 				dsets[dcache.idx].way2.word2 <= block_data;
 				dsets[dcache.idx].way2.dirty <= 0;
 				dsets[dcache.idx].way2.valid <= 1;
+				dsets[dcache.idx].way2.tag <= dcache.tag;
 			end 			
 		end
 
