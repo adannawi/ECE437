@@ -64,7 +64,7 @@ module dcache (
 
 
 	//Memory Address to write cache data to when needed
-	logic [31:0 ]mem_addr;
+	logic [31:0] mem_addr;
 
 	//Indicates which index the write data is coming form for mem write
 	logic [2:0] data_idx;
@@ -162,7 +162,7 @@ end
 always_ff @(posedge CLK, negedge nRST) begin
 	if (nRST == 0) begin
 		miss_count <= 0;
-	end else if (miss && state == FD1) begin
+	end else if (miss && (state == FD2) && (!cif.dwait)) begin
 		miss_count <= miss_count + 1;
 	end else begin
 		miss_count <= miss_count;
