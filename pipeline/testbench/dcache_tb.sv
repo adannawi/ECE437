@@ -7,23 +7,26 @@
 module dcache_tb;
 	import cpu_types_pkg::*;
 	parameter PERIOD = 10;
-	logic CLK = 0;
-	logic nRST = 0;
+	logic CLK = 1;
+	logic nRST;
+
 	always #(PERIOD/2) CLK++;
 
 	caches_if cif ();
 	datapath_cache_if dif ();
-	test PROG (CLK, nRST, cif, dif);
+	//test PROG (CLK, nRST, cif, dif);
 	// PUT DCACHE DUT HERE
-endmodule // dcache_tb
 
-program test
-	(
-		input logic CLK,
-		output logic nRST,
-		caches_if cif,
-		datapath_cache_if dif
-	);
+
+
+
+//program test
+	//(
+		//input logic CLK,
+		//output logic nRST,
+		//caches_if cif,
+		//datapath_cache_if dif
+	//);
 
 initial begin
 	@(negedge CLK);
@@ -70,6 +73,21 @@ initial begin
 		$display("Data is bad");
 	end
 
-	
+	$finish();
 end
-endprogram
+
+
+task memresponse(
+	input word_t data;
+	);
+
+
+endtask : sendmemdata
+task wait1 ();
+    begin
+	@(posedge CLK);
+	nRST = 1;
+    end
+endtask
+
+endmodule // dcache_tb
