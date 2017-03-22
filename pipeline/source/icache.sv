@@ -5,8 +5,9 @@
 
 module icache (
 	input CLK, nRST,
-	caches_if.icache icif,
-	datapath_cache_if.icache dcif
+	datapath_cache_if.icache dcif,
+	caches_if.icache icif
+	
 	//cache_control_if ccif
 	);
 
