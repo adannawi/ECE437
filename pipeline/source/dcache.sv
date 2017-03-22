@@ -594,7 +594,10 @@ end
 			IDLE: begin
 				//Cache memory dirty on miss
 				//Only matters if both ways are dirty, or the empty slot will be LRU
-				if (miss) begin
+				if (dcif.halt) begin
+					//On halt when not already getting data, go to write back dirty sta
+					next_state = DCHK;
+				end else if (miss) begin
 					if (lru[dcache.idx] && dsets[dcache.idx].way2.dirty) begin
 						next_state = WB1;
 					end else if (!lru[dcache.idx] && dsets[dcache.idx].way1.dirty) begin
@@ -607,9 +610,6 @@ end
 				end else if (dhit) begin
 					next_state = IDLE;
 
-				//On halt when not already getting data, go to write back dirty stages
-				end else if (dcif.halt) begin
-					next_state = DCHK;
 				end
 			end
 
