@@ -455,6 +455,32 @@ module datapath (
 
   //Flush/Enable Signals
   //
+
+  ////////////////////////////////////////////////
+  /*    Control Logic for Datapath  */
+  ////////////////////////////////////////////////
+  /*  ihit    dhit    action
+        0       0       stall pipe
+        0       1       insert bubble -> same as inserting bubble in memory earlier
+        1       0       stall pipe
+        1       1       move pipe forward -> let everything progress as normal
+  */
+  logic pipestall
+
+  //Really just stall the pipe on !dhit -> BUT ONLY IF WE WANT DATA
+  assign pipestall = (!dhit && (exif.dWENOUT | exif.dRENOUT));
+
+  //For caches
+  assign feif.flush = huif.fetch_flush && ihit; //(ihit | dhit);
+  assign feif.enable = !huif.fetch_stall && ihit && !pipestall;
+  assign deif.flush = huif.decode_flush && ihit;
+  assign deif.enable = !huif.decode_stall && ihit && !pipestall; //(ihit | dhit);
+  assign exif.flush = huif.execute_flush && (ihit || dhit);
+  assign exif.enable = !huif.execute_stall && ihit && !pipestall; //(ihit | dhit);
+  assign mmif.flush = huif.memory_flush; // & ihit;
+  assign mmif.enable = !huif.memory_stall && (ihit || dhit) && !pipestall;
+
+/*  Pipeline version signals
   assign feif.flush = huif.fetch_flush & ihit; //(ihit | dhit);
   assign feif.enable = !huif.fetch_stall & ihit;
   assign deif.flush = huif.decode_flush & ihit;
@@ -463,7 +489,7 @@ module datapath (
   assign exif.enable = !huif.execute_stall & ihit; //(ihit | dhit);
   assign mmif.flush = huif.memory_flush; // & ihit;
   assign mmif.enable = !huif.memory_stall & (ihit | dhit);
-
+*/
   ////////////////////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////
