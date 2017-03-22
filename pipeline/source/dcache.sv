@@ -241,7 +241,7 @@ begin
 		if (dhit && (state == IDLE)) begin
 
 			//Check first way in set
-			if (cWEN[dcache.idx*2]) begin
+			if (cWEN[{dcache.idx,1'b0}]) begin
 
 				//Write data, set dirty, should already be valid
 				if (dcache.blkoff == 0) begin
@@ -255,7 +255,7 @@ begin
 				end
 
 			//Check Second way
-			end else if (cWEN[(dcache.idx*2)+1]) begin
+			end else if (cWEN[{dcache.idx,1'b1}]) begin
 				if (dcache.blkoff == 0) begin
 					//Write to first block if offset == 0
 					dsets[dcache.idx].way2.word1 <= block_data;
@@ -270,13 +270,13 @@ begin
 		//Write based on states when replacing data (assume written back)
 		end else if (state == FD1) begin
 			//Write to block 1 of whatever index is indicated -> where set by cWEN
-			if (cWEN[dcache.idx*2] == 1) begin
+			if (cWEN[{dcache.idx,1'b0}] == 1) begin
 				//Write to first way
 				dsets[dcache.idx].way1.word1 <= block_data;
 				dsets[dcache.idx].way1.dirty <= 0;
 				dsets[dcache.idx].way1.valid <= 1;
 
-			end else if (cWEN[dcache.idx*2 + 1] == 1) begin
+			end else if (cWEN[{dcache.idx,1'b1}] == 1) begin
 				//If not first, Write to second way
 				dsets[dcache.idx].way2.word1 <= block_data;
 				dsets[dcache.idx].way2.dirty <= 0;
@@ -284,13 +284,13 @@ begin
 			end
 		end else if (state == FD2) begin
 
-			if (cWEN[dcache.idx*2] == 1) begin
+			if (cWEN[{dcache.idx,1'b0}] == 1) begin
 				//Write to first way
 				dsets[dcache.idx].way1.word2 <= block_data;
 				dsets[dcache.idx].way1.dirty <= 0;
 				dsets[dcache.idx].way1.valid <= 1;
 
-			end else if (cWEN[dcache.idx*2 + 1] == 1) begin
+			end else if (cWEN[{dcache.idx,1'b1}] == 1) begin
 				//If not first, Write to second way
 				dsets[dcache.idx].way2.word2 <= block_data;
 				dsets[dcache.idx].way2.dirty <= 0;
@@ -301,11 +301,11 @@ begin
 		//Clean reset of dirty bits
 		for (i = 0; i < 8; i++) begin
 			if (dsets[i].way1.dirty == 1) begin
-				if (clean[i*2] == 1) begin
+				if (clean[{i,1'b0}] == 1) begin
 					dsets[i].way1.dirty <= 0;
 				end
 			end else if (dsets[i].way2.dirty == 1) begin
-				if (clean[i*2 + 1] == 1) begin
+				if (clean[{i,1'b1}] == 1) begin
 					dsets[i].way2.dirty <= 0;
 				end
 			end
@@ -351,10 +351,10 @@ always_comb begin
 		//Enable whichever index has the matching tag, & block
 		//Indexes 000 to 111
 		if (dsets[dcache.idx].way1.tag == dcache.tag) begin
-			cWEN[dcache.idx * 2] = 1;
+			cWEN[{dcache.idx,1'b0}] = 1;
 		end else  begin
 			//Will not have a hit if this second one mdoesn't match, so can use an else instead of if else
-			cWEN[dcache.idx * 2 + 1] = 1;
+			cWEN[{dcache.idx,1'b1}] = 1;
 		end
 	//end else if ((state == FD1) && !cif.dwait) begin
 	end else if (((state == FD1) || (state == FD2)) && !cif.dwait)begin
@@ -368,7 +368,7 @@ always_comb begin
 			//	LRU
 			//	ALWAYS to word 1 for FD1, 2 for FD2 -> will be in register
 
-			cWEN[dcache.idx*2 + lru[dcache.idx]] = 1;
+			cWEN[{dcache.idx,1'b0} + lru[dcache.idx]] = 1;
 
 			//WHEN to write is handled by state machine and factors in
 			//	LRU data should already be written back
@@ -423,7 +423,7 @@ always_ff @(posedge CLK, negedge nRST) begin
 	end else if (dcif.dmemWEN && (state == IDLE) && dhit) begin
 		//Iterate through to find whatever is being written
 
-		if (cWEN[dcache.idx*2]) begin
+		if (cWEN[{dcache.idx,1'b0}]) begin
 				//This should work in any case for a write, because
 				//if a block is fetched from memory then it will be 
 				//written to or read at the end in idle state
@@ -433,7 +433,7 @@ always_ff @(posedge CLK, negedge nRST) begin
 				// Can be set to whichever way is not set 
 			lru[dcache.idx] <= 1;
 
-		end else if  (cWEN[dcache.idx*2 + 1]) begin
+		end else if  (cWEN[{dcache.idx,1'b1}]) begin
 			lru[dcache.idx] <= 0;
 
 		end else begin
