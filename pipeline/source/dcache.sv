@@ -31,7 +31,7 @@ module dcache (
     	WBD1     	= 4'b0110,
     	WBD2     	= 4'b0111,
     	DCHK     	= 4'b1000,
-    	INVAL    	= 4'b1001,
+    	INVAL    	= 4'b1001, //Extra, not needed anymore
     	WRCNT     	= 4'b1010,
     	FLUSHED    	= 4'b1011
 	} Statetype;
@@ -56,7 +56,7 @@ module dcache (
 
 	// State Machine Output variables
 	logic [15:0] clean; //Resets to dirty bits on read from mem
-
+	logic word_sel;
 
 	//Write Enables
 	//Accounts for every way but not the block within the way
@@ -64,6 +64,10 @@ module dcache (
 
 	logic [7:0] lru;
 	logic dhit;
+
+	//Indicates next dirty data to write back
+	logic [3:0] next_dirty;
+	logic some_dirty;
 
     //   26 bits tag | 3 bits idx | 1 bit block offset | 2 bits of byte offset (4 bytes/32 bits)
 	assign dcache = dcachef_t'(dcif.imemaddr);
@@ -279,6 +283,19 @@ begin
 				dsets[dcache.idx].way2.valid <= 1;
 			end 			
 		end
+
+		//Clean reset of dirty bits
+		for (i = 0; i < 8; i++) begin
+			if (dsets[i].way1.dirty == 1) begin
+				if (clean[i*2] == 1) begin
+					dsets[i].way1.dirty <= 0;
+				end
+			end else if (dsets[i].way2.dirty == 1) begin
+				if (clean[i*2 + 1] == 1) begin
+					dsets[i].way2.dirty <= 0;
+				end
+			end
+		end
 	end
 end
 
@@ -414,6 +431,29 @@ end
 /////////////////////////////////////////////////////////////
 
 
+
+/////////////////////////////////////////////////////////////
+//					  Next Dirty to WB
+/////////////////////////////////////////////////////////////
+
+//For selecting next dirty value to write back
+always_comb begin
+	next_dirty = '0;
+	some_dirty = 0;
+	for (i = 0; i < 8; i++) begin
+		if (dsets[i].way1.dirty) begin
+			next_dirty = i * 2;
+			some_dirty = 1;
+		end else if (dsets[i].way2.dirty) begin
+			next_dirty = i * 2 + 1;
+			some_dirty = 1;			
+		end
+	end // for (i = 0; i < 8; i++)
+end
+ 
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+
 /////////////////////////////////////////////////////////////
 //					  State Machine
 /////////////////////////////////////////////////////////////
@@ -445,88 +485,165 @@ always_comb begin
 		//end
 
 		casez(state)
+			//Default for all states: wait
+			next_state = state;
 			IDLE: begin
-				if (miss & (dsets[dcache.idx].way1.dirty | dsets[dcache.idx].way2.dirty)) begin
-					next_state = WB1;
+				//Cache memory dirty on miss
+				//Only matters if both ways are dirty, or the empty slot will be LRU
+				if (miss) begin
+					if (lru[dcache.idx] && dsets[dcache.idx].way2.dirty) begin
+						next_state = WB1;
+					end else if (!lru[dcache.idx] && dsets[dcache.idx].way1.dirty) begin
+						next_state = WB1;
+					end else begin
+						next_state = FD1;
+					end
 				end
 
-				if (miss & (!dsets[dcache.idx].way1.dirty & !dsets[dcache.idx].way2.dirty)) begin
-					next_state = FD1;
-				end
-
-				if (hit) begin
+				//On a hit just stay IDLE
+				end else if (dhit) begin
 					next_state = IDLE;
-				end
 
-				if (dpif.halt) begin
-					next_state = DCHC;
+				//On halt when not already getting data, go to write back dirty stages
+				end else if (dpif.halt) begin
+					next_state = DCHK;
 				end
 			end
 
 			WB1: begin
+				//Move on if not waiting on memory
 				if (!dwait) begin
 					next_state = WB2;
+
+				//Else keep waiting
+				end else begin
+					next_state = state;
 				end
 			end
 
 			WB2: begin
+				//Move on to fetch data once memory is done
 				if (!dwait) begin
 					next_state = FD1;
+
+				//Else keep waiting
+				end else begin
+					next_state = state;
 				end
 			end
 
 			FD1: begin
+				//Move to get second word if memory done
 				if (!dwait) begin
 					next_state = FD2;
+
+				//Else keep waiting
+				end else begin
+					next_state = state;
 				end 
 			end
 
 			FD2: begin
+				//Go back to idle once done getting data
 				if (!dwait) begin
 					next_state = IDLE;
+				
+				//Else keep waiting
+				end else begin
+					next_state = state;
 				end
 			end
 
-			DCHC: begin // Need way to check if dirty or not
-				for (i = 0; i < 8; i++) begin
-					if (dsets[i].way1.dirty | dsets[i].way2.dirty) begin
-						next_state = WBD1;
-					end else begin
-						next_state = WRCNT;
-					end
+			DCHC: begin 
+				// Need way to check if dirty or not -> use dirty bits, will be cleaned in DWB2
+				//Assume clean until dirty is found
+				next_state = WRCNT;
+
+				//If any are dirty go to write back. Other logic will select the index to write
+				if (some_dirty) begin
+					next_state = WBD1;
 				end
 			end
 
 			WBD1: begin
+				//Move on if memory is done
 				if (!dwait) begin
 					next_state = WBD2;
+				
+				//Else keep waiting
+				end else begin
+					next_state = state;
 				end
 			end
 
 			WBD2: begin
+				//Move on if memory is good
 				if (!dwait) begin
-					next_state = INVAL;
+					next_state = DCHK;
+				
+				//Else keep waiting
+				end else begin
+					next_state = state;
 				end
 			end
 
+			//I think this is a state I put in originally that is unneeded
 			INVAL: begin
-				next_state = DCHC;
+				next_state = IDLE;
 			end
 
 			WRCNT: begin
 				if (!dwait) begin
 					next_state = FLUSH;
+				
+				//Else keep waiting
+				end else begin
+					next_state = state;
 				end
 			end
-
 	end
+
+	logic writecounter;
+	//use dcif.flushed
+	//use cif.dREN
+	//use cif.dWEN
+	//use clean[15:0]
+	//use word_sel
 
 	// Output Logic
 	always_comb begin
 		// Defaults 
-//		casez(state)
-//			IDLE:
+		casez(state)
+			IDLE: begin
+			end
 
+			WB1: begin
+			end
+
+			WB2: begin
+			end
+
+			FD1: begin
+			end
+
+			FD2: begin
+			end
+
+			DCHC: begin 
+			end
+
+			WBD1: begin
+			end
+
+			WBD2: begin
+			end
+
+			//I think this is a state I put in originally that is unneeded
+			INVAL: begin
+			end
+
+			WRCNT: begin
+			end
 	end
 
 			
