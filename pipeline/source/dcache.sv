@@ -56,7 +56,7 @@ module dcache (
 	word_t hit_count;
 	word_t block_data;
 	logic writecounter;
-	
+
 	// State Machine Output variables
 	//logic [15:0] clean; //Resets to dirty bits on read from mem
 	logic word_sel;
@@ -473,7 +473,7 @@ end
 always_comb begin
 	mem_addr = 32'hECE43700; //Error value, this should never be hit
 	data_way = 0;
-	if ((state == WBD1) || (state == WBD2) begin
+	if ((state == WBD1) || (state == WBD2)) begin
 		//Select based off of next_dirty
 		data_way = dirty_sel[0]
 		data_way = dirty_sel[3:1]
