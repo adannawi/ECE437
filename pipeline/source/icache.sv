@@ -28,6 +28,7 @@ logic miss;
 //	Register Sets
 always_ff @ (posedge CLK, negedge nRST)
 begin
+	i = 0;
 	if (!nRST) begin
 		for (i = 0; i < 16; i++) begin // Reset all 16 sets
 			isets[i].valid <= 0;
