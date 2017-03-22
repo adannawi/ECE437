@@ -464,18 +464,18 @@ end
 /////////////////////////////////////////////////////////////
 //					  Next Dirty to WB
 /////////////////////////////////////////////////////////////
-logic [2:0] k;
+logic [3:0] k;
 //For selecting next dirty value to write back
 always_comb begin
 	//Defaults
 	next_dirty = 0;
 	some_dirty = 0;
-	for (k= 0; k < 8; k++) begin
+	for (k = 0; k < 8; k++) begin
 		if (dsets[k].way1.dirty) begin
-			next_dirty = {k,1'b0};
+			next_dirty = {k[2:0],1'b0};
 			some_dirty = 1;
 		end else if (dsets[k].way2.dirty) begin
-			next_dirty = {k,1'b1};
+			next_dirty = {k[2:0],1'b1};
 			some_dirty = 1;			
 		end
 	end // for (i = 0; i < 8; i++)
@@ -490,7 +490,7 @@ end
 
 //Selects the location that memory will be written to
 always_comb begin
-	cif.daddr = 32'hECE43700; //Error value, this should never be hit
+	mem_addr = 32'hECE43700; //Error value, this should never be hit
 	data_way = 0;
 	if ((state == WBD1) || (state == WBD2)) begin
 		//Select based off of next_dirty
@@ -583,7 +583,8 @@ end
 		//		//if (!hit & )
 		//	end
 		//end
-
+		next_state = state;
+		
 		casez(state)
 			//Default for all states: wait
 			
