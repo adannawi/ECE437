@@ -57,8 +57,19 @@ module dcache (
 	word_t block_data;
 
 	// State Machine Output variables
-	logic [15:0] clean; //Resets to dirty bits on read from mem
+	//logic [15:0] clean; //Resets to dirty bits on read from mem
 	logic word_sel;
+	logic memtocache;
+
+
+	//Memory Address to write cache data to when needed
+	logic [31:0 ]mem_addr;
+
+	//Indicates which index the write data is coming form for mem write
+	logic [2:0] data_idx;
+
+	//Indicates which way for the index the data is selected
+	logic data_way;
 
 	//Write Enables
 	//Accounts for every way but not the block within the way
@@ -72,7 +83,7 @@ module dcache (
 	logic some_dirty;
 
     //   26 bits tag | 3 bits idx | 1 bit block offset | 2 bits of byte offset (4 bytes/32 bits)
-	assign dcache = dcachef_t'(dcif.imemaddr);
+	
 
   //	DATAPATH_CACHE_IF
   //	This is where inputs from datapath come from
@@ -92,25 +103,11 @@ module dcache (
   //        ccwrite, cctrans
   //);
 
-
+assign dcache = dcachef_t'(dcif.dmemaddr);
 //Very close to the logic for dmemload setting
 assign dcif.dhit = (dcif.dmemWEN || dcif.dmemREN) && ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) || ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1));
 assign dhit = dcif.dhit; //Purely to make it easier to reference
 
-  //typedef struct packed {
-  //  logic [DTAG_W-1:0]  tag;
-  //  logic [DIDX_W-1:0]  idx;
-  //  logic [DBLK_W-1:0]  blkoff;
-  //  logic [DBYT_W-1:0]  bytoff;
-  //} dcachef_t;
-
- //typedef struct packed {
-//		logic valid;
-//		logic dirty;
-//		logic [ITAG_W-1:0] tag;
-//		word_t word1;
-//		word_t word2;
-//	 } dway;
 
 
 /////////////////////////////////////////////////////////////
@@ -360,6 +357,7 @@ end
 /////////////////////////////////////////////////////////////
 //Block write data selection logic
 /////////////////////////////////////////////////////////////
+//Selects what data will be selected for writing into the cache
 always_comb begin
 	if (memtocache) begin
 		//Write to block indicated by state machine, enable only 
@@ -423,9 +421,7 @@ always_ff @(posedge CLK, negedge nRST) begin
 			lru[dcache.idx] = 0;
 		end
 
-	end else begin
-		lru <= lru;
-	end
+	end 
 end
 
 /////////////////////////////////////////////////////////////
@@ -454,6 +450,47 @@ end
  
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////
+//				 Mem. Write Destination Logic
+/////////////////////////////////////////////////////////////
+
+//Selects the location that memory will be written to
+always_comb begin
+	mem_addr = 32'hECE43700; //Error value, this should never be hit
+	data_way = 0;
+	if ((state == WBD1) || (state == WBD2) begin
+		//Select based off of next_dirty
+		data_way = dirty_sel[0]
+		data_way = dirty_sel[3:1]
+		if (dirty_sel[0] == 0) begin
+			//Select Way 1
+			mem_addr = {dsets[dirty_sel[3:1]].way1.tag, dirty_sel[3:1], word_sel, 2'b00};
+		end else if (dirty_sel[1] == 1) begin
+			//Select Way 2
+			mem_addr = {dsets[dirty_sel[3:1]].way2.tag, dirty_sel[3:1], word_sel, 2'b00};
+		end
+
+	end else begin
+		//Select based off of current data trying to be written and LRU
+		data_way = lru[dcache.idx]
+		data_idx = dcache.idx;
+		if (lru[dcache.idx] == 0) begin
+			//Select Way 1
+			mem_addr = {dsets[dcache.idx].way1.tag, dcache.idx, word_sel, 2'b00};
+
+		end else if (lru[dcache.idx] == 1) begin
+			//Select Way 2
+			mem_addr = {dsets[dcache.idx].way2.tag, dcache.idx, word_sel, 2'b00};
+		end
+
+	end
+
+end
+		//Write 
+////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+
 
 /////////////////////////////////////////////////////////////
 //					  State Machine
@@ -617,7 +654,16 @@ end
 	// Output Logic
 	always_comb begin
 		// Defaults 
+		memtocache = 0;
+		dcif.flushed = 0;
+		cif.dREN = 0;
+		cif.dWEN = 0;
+		word_sel = 0;
+		//	clean = 0;
+		writecounter = 0;
+
 		casez(state)
+		
 			IDLE: begin
 				dcif.flushed = 0;
 				cif.dREN = 0;
@@ -652,6 +698,7 @@ end
 				word_sel = 0;
 			//	clean = 0;
 				writecounter = 0;
+				memtocache = 1;
 			end
 
 			FD2: begin
@@ -661,6 +708,7 @@ end
 				word_sel = 1;
 			//	clean = 0;
 				writecounter = 0;
+				memtocache = 1;
 			end
 
 			DCHK: begin
