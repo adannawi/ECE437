@@ -40,6 +40,7 @@ module dcache_tb;
 // 4. LRU Replacement
 // 5. Writes/Reads
 // 6. Capacity
+// 7. Hit counter
 ///////////////////
 //
 // Manually set address to 32 bits.
@@ -183,31 +184,54 @@ initial begin
 
 	///////////////////////
 	//Test 6:
-	// Try reading from the cache, should get a hit & should not write to cache
+	// Try reading to set 0 now. Dirty so will need to be written back
 	///////////////////////
 	testcase++;
-	dif.dmemaddr = 32'b00000000000000000000010000000000;
-	dif.dmemstore = 32'hECE43700;
+	dif.dmemaddr = 32'b00000000000000000000000010000000;
+	dif.dmemstore = 32'hDEADBEEF;
 	dif.dmemREN = 1;
 	dif.dmemWEN = 0;
 	dif.halt = 0;
 	cif.dwait = 0;
-	cif.dload = 32'hDEADBEEF;
+	cif.dload = 32'haabbccdd;
 
-	@(posedge dif.dhit);
+	@(posedge dif.dhit); // dhit??
 	@(negedge CLK);
 	cif.dwait = 1;
 	@(posedge CLK);
 	cif.dwait = 0;
-	
 
 	///////////////////////
 	//Test 7:
-	// Halt -> should flush dirties 
+	// Populate with dirties
 	///////////////////////
 	testcase++;
-	dif.halt = 1;
+	for(i = 0; i < 16; i++) begin
+	tbtag = (i * 2) + 1;
+	tbidx = i % 8;
+	tbblkoff = 0;
+	tbbyteoff = 0;
+	dif.dmemaddr = {tbtag, tbidx, tbblkoff, tbbyteoff};
+	dif.dmemstore = 32'hDEEDBEEF;
+	dif.dmemREN = 0;
+	dif.dmemWEN = 1;
+	dif.halt = 0;
+	cif.dwait = 0;
+	cif.dload = (i < 8) ? 32'hece43700 : 32'hcadacada;
 
+	@(posedge dif.dhit); // dhit??
+	@(negedge CLK);
+	cif.dwait = 1;
+	@(posedge CLK);
+	cif.dwait = 0;
+	end // for(i = 0; i < 8; i++)
+
+	///////////////////////
+	//Test 8:
+	// Halt and flush
+	///////////////////////
+	dif.halt = 1;
+	#10000;
 	$finish();
 end
 
