@@ -465,13 +465,14 @@ module datapath (
         1       0       stall pipe
         1       1       move pipe forward -> let everything progress as normal
   */
-  logic pipestall
+  logic pipestall;
 
   //Really just stall the pipe on !dhit -> BUT ONLY IF WE WANT DATA
   assign pipestall = (!dhit && (exif.dWENOUT | exif.dRENOUT));
-
+  assign bubble = !ihit && !pipestall;
+  
   //For caches
-  assign feif.flush = huif.fetch_flush && ihit; //(ihit | dhit);
+  assign feif.flush = (huif.fetch_flush && ihit) || (bubble); //(ihit | dhit);
   assign feif.enable = !huif.fetch_stall && ihit && !pipestall;
   assign deif.flush = huif.decode_flush && ihit;
   assign deif.enable = !huif.decode_stall && ihit && !pipestall; //(ihit | dhit);
