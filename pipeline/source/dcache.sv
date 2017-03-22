@@ -55,7 +55,8 @@ module dcache (
 	word_t miss_count;
 	word_t hit_count;
 	word_t block_data;
-
+	logic writecounter;
+	
 	// State Machine Output variables
 	//logic [15:0] clean; //Resets to dirty bits on read from mem
 	logic word_sel;
@@ -181,7 +182,7 @@ assign miss = !dhit;
 //Store value
 
 always_comb begin
-	if (write_counter) begin
+	if (writecounter) begin
 		cif.dstore = count;
 	end else begin
 		cif.dstore = mem_addr;
@@ -657,7 +658,7 @@ end
 		endcase
 	end // always_comb
 
-	logic writecounter;
+	
 	//use dcif.flushed
 	//use cif.dREN
 	//use cif.dWEN
@@ -730,7 +731,7 @@ end
 				cif.dWEN = 0;
 				word_sel = 0;
 			//	clean = 0;
-				write_counter = 0;
+				writecounter = 0;
 			end
 
 			WBD1: begin
@@ -739,7 +740,7 @@ end
 				cif.dWEN = 1;
 				word_sel = 0;
 			//	clean = 0;
-				write_counter = 0;
+				writecounter = 0;
 			end
 
 			WBD2: begin
@@ -748,7 +749,7 @@ end
 				cif.dWEN = 1;
 				word_sel = 1;
 			//	clean = 1;
-				write_counter = 0;
+				writecounter = 0;
 			end
 
 			//I think this is a state I put in originally that is unneeded
@@ -762,7 +763,7 @@ end
 				cif.dWEN = 1;
 				word_sel = 0;
 			//	clean = 0;
-				write_counter = 1;
+				writecounter = 1;
 			end
 
 			FLUSHED: begin
@@ -771,7 +772,7 @@ end
 				cif.dWEN = 0;
 				word_sel = 0;
 			//	clean = 0;
-				write_counter = 0;
+				writecounter = 0;
 			end // FLUSHED:
 		endcase
 	end // always_comb
