@@ -597,7 +597,7 @@ end
 				if (dcif.halt) begin
 					//On halt when not already getting data, go to write back dirty sta
 					next_state = DCHK;
-				end else if (miss) begin
+				end else if (miss && (dcif.dmemREN | dcif.dmemWEN)) begin
 					if (lru[dcache.idx] && dsets[dcache.idx].way2.dirty) begin
 						next_state = WB1;
 					end else if (!lru[dcache.idx] && dsets[dcache.idx].way1.dirty) begin
