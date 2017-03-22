@@ -7,6 +7,8 @@ module dcache (
 	datapath_cache_if.dcache dcif,
 	caches_if.dcache cif
 	);
+	
+	import cpu_types_pkg::*;
 
 	typedef struct packed {
 		logic valid;
@@ -17,8 +19,8 @@ module dcache (
 	 } dway;
 
 	typedef struct packed {
-		dway way1
-		dway way2
+		dway way1;
+		dway way2;
 	} dset;
 
 	//State Enumeration
@@ -50,7 +52,7 @@ module dcache (
 
 	//Counts
 	word_t count;
-	word_t miss;
+	word_t miss_count;
 	word_t hit_count;
 	word_t block_data;
 
@@ -161,7 +163,7 @@ end
 always_ff @(posedge CLK, negedge nRST) begin
 	if (nRST == 0) begin
 		miss_count <= 0;
-	end else if (miss && state = FD1) begin
+	end else if (miss && state == FD1) begin
 		miss_count <= miss_count + 1;
 	end else begin
 		miss_count <= miss_count;
@@ -251,7 +253,6 @@ begin
 					dsets[dcache.idx].way2.dirty <= 1;
 				end
 			end
-		end
 
 		//Write based on states when replacing data (assume written back)
 		end else if (state == FD1) begin
@@ -459,7 +460,6 @@ end
 /////////////////////////////////////////////////////////////
 
 //Block selection data logic
-always_comb begin
 
 /* State Machine
 	States:
@@ -470,14 +470,14 @@ always_comb begin
     	FD2     
     	WBD1    
     	WBD2     
-    	DCHC     
+    	DCHK     
     	INVAL    	
     	WRCNT   
-    	FLUSH     	
+    	FLUSHED     	
 */
 	
 	//Next State Logic
-	always_comb begin
+	always_comb begin	
 		//if (state == IDLE) begin
 		//	if(dmemREN || dmemWEN) begin
 		//		//if (!hit & )
@@ -486,7 +486,7 @@ always_comb begin
 
 		casez(state)
 			//Default for all states: wait
-			next_state = state;
+			
 			IDLE: begin
 				//Cache memory dirty on miss
 				//Only matters if both ways are dirty, or the empty slot will be LRU
@@ -498,7 +498,6 @@ always_comb begin
 					end else begin
 						next_state = FD1;
 					end
-				end
 
 				//On a hit just stay IDLE
 				end else if (dhit) begin
@@ -512,7 +511,7 @@ always_comb begin
 
 			WB1: begin
 				//Move on if not waiting on memory
-				if (!dwait) begin
+				if (!cif.dwait) begin
 					next_state = WB2;
 
 				//Else keep waiting
@@ -523,7 +522,7 @@ always_comb begin
 
 			WB2: begin
 				//Move on to fetch data once memory is done
-				if (!dwait) begin
+				if (!cif.dwait) begin
 					next_state = FD1;
 
 				//Else keep waiting
@@ -534,7 +533,7 @@ always_comb begin
 
 			FD1: begin
 				//Move to get second word if memory done
-				if (!dwait) begin
+				if (!cif.dwait) begin
 					next_state = FD2;
 
 				//Else keep waiting
@@ -545,7 +544,7 @@ always_comb begin
 
 			FD2: begin
 				//Go back to idle once done getting data
-				if (!dwait) begin
+				if (!cif.dwait) begin
 					next_state = IDLE;
 				
 				//Else keep waiting
@@ -554,7 +553,7 @@ always_comb begin
 				end
 			end
 
-			DCHC: begin 
+			DCHK: begin 
 				// Need way to check if dirty or not -> use dirty bits, will be cleaned in DWB2
 				//Assume clean until dirty is found
 				next_state = WRCNT;
@@ -567,7 +566,7 @@ always_comb begin
 
 			WBD1: begin
 				//Move on if memory is done
-				if (!dwait) begin
+				if (!cif.dwait) begin
 					next_state = WBD2;
 				
 				//Else keep waiting
@@ -578,7 +577,7 @@ always_comb begin
 
 			WBD2: begin
 				//Move on if memory is good
-				if (!dwait) begin
+				if (!cif.dwait) begin
 					next_state = DCHK;
 				
 				//Else keep waiting
@@ -593,15 +592,20 @@ always_comb begin
 			end
 
 			WRCNT: begin
-				if (!dwait) begin
-					next_state = FLUSH;
+				if (!cif.dwait) begin
+					next_state = FLUSHED;
 				
 				//Else keep waiting
 				end else begin
 					next_state = state;
 				end
 			end
-	end
+
+			default: begin
+				next_state = state;
+			end // default:
+		endcase
+	end // always_comb
 
 	logic writecounter;
 	//use dcif.flushed
@@ -615,36 +619,101 @@ always_comb begin
 		// Defaults 
 		casez(state)
 			IDLE: begin
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 0;
+				word_sel = 0;
+			//	clean = 0;
+				writecounter = 0;
 			end
 
 			WB1: begin
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 1;
+				word_sel = 0;
+			//	clean = 0;
+				writecounter = 0;
 			end
 
 			WB2: begin
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 1;
+				word_sel = 1;
+			//	clean = 1;
+				writecounter = 0;
 			end
 
 			FD1: begin
+				dcif.flushed = 0;
+				cif.dREN = 1;
+				cif.dWEN = 0;
+				word_sel = 0;
+			//	clean = 0;
+				writecounter = 0;
 			end
 
 			FD2: begin
+				dcif.flushed = 0;
+				cif.dREN = 1;
+				cif.dWEN = 0;
+				word_sel = 1;
+			//	clean = 0;
+				writecounter = 0;
 			end
 
-			DCHC: begin 
+			DCHK: begin
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 0;
+				word_sel = 0;
+			//	clean = 0;
+				write_counter = 0;
 			end
 
 			WBD1: begin
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 1;
+				word_sel = 0;
+			//	clean = 0;
+				write_counter = 0;
 			end
 
 			WBD2: begin
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 1;
+				word_sel = 1;
+			//	clean = 1;
+				write_counter = 0;
 			end
 
 			//I think this is a state I put in originally that is unneeded
 			INVAL: begin
+				// ?
 			end
 
 			WRCNT: begin
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 1;
+				word_sel = 0;
+			//	clean = 0;
+				write_counter = 1;
 			end
-	end
+
+			FLUSHED: begin
+				dcif.flushed = 1;
+				cif.dREN = 0;
+				cif.dWEN = 0;
+				word_sel = 0;
+			//	clean = 0;
+				write_counter = 0;
+			end // FLUSHED:
+		endcase
+	end // always_comb
 
 			
 
@@ -655,6 +724,6 @@ always_comb begin
 		end else begin
 			state <= next_state;
 		end
-	end
+	end // always_ff @(posedge CLK,negedge nRST)
 
 endmodule
