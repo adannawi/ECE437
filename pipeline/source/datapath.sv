@@ -171,7 +171,7 @@ module datapath (
       2'b01:  begin
                 PCNxt = branchaddr;
               end
-          //Branch logic handled in Exec stage now
+          //Branch (addr?) logic handled in Exec stage now
                /* if(branch == 1) begin
                   //PCNxt = (Ext_dat << 2) + PCInc;
             PCNxt = BranchAddr;
@@ -461,25 +461,25 @@ module datapath (
   ////////////////////////////////////////////////
   /*  ihit    dhit    action
         0       0       stall pipe
-        0       1       insert bubble -> same as inserting bubble in memory earlier
-        1       0       stall pipe
+        0       1       insert bubble -> similar to inserting bubble in memory earlier. Can either bubble 
+        1       0       stall pipe -> Should only matter if requesting both, ihit always requested though
         1       1       move pipe forward -> let everything progress as normal
   */
   logic pipestall;
 
   //Really just stall the pipe on !dhit -> BUT ONLY IF WE WANT DATA
-  assign pipestall = (!dhit && (exif.dWENOUT | exif.dRENOUT));
-  assign bubble = !ihit && !pipestall;
+  assign pipestall = (!dhit && (exif.dWENOUT || exif.dRENOUT));
+  //assign bubble = !ihit && !pipestall;
   
   //For caches
-  assign feif.flush = (huif.fetch_flush && ihit) || (bubble); //(ihit | dhit);
-  assign feif.enable = !huif.fetch_stall && ihit && !pipestall;
+  assign feif.flush = huif.fetch_flush && ihit; //|| (bubble); //(ihit | dhit);
+  assign feif.enable = !huif.fetch_stall && !pipestall && ihit;
   assign deif.flush = huif.decode_flush && ihit;
   assign deif.enable = !huif.decode_stall && ihit && !pipestall; //(ihit | dhit);
   assign exif.flush = huif.execute_flush && (ihit || dhit);
-  assign exif.enable = !huif.execute_stall && ihit && !pipestall; //(ihit | dhit);
+  assign exif.enable = !huif.execute_stall && (ihit || dhit) && !pipestall; //(ihit | dhit);
   assign mmif.flush = huif.memory_flush; // & ihit;
-  assign mmif.enable = !huif.memory_stall && (ihit || dhit) && !pipestall;
+  assign mmif.enable = !huif.memory_stall && !pipestall;
 
 /*  Pipeline version signals
   assign feif.flush = huif.fetch_flush & ihit; //(ihit | dhit);
@@ -536,15 +536,7 @@ module datapath (
       //halt = 0;
 		end
   end
-/*
-  always_ff @(posedge CLK, negedge nRST) begin
-    if(nRST == 0) begin
-      dpif.halt <= 0;
-    end else begin
-      dpif.halt <= halt;
-    end
-  end
-*/
+
 
   assign ireadreq = !dpif.halt;
 
