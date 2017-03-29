@@ -38,6 +38,30 @@ module dcache (
     	FLUSHED    	= 4'b1011
 	} Statetype;
 
+
+///////////////MSI CACHE SIDE///////////////
+/*
+Upgrade dcache to handle snooping
+Must jump to snoop handling states
+Do not need to react in th emiddle of load/store,
+Else must be able to grab snoop
+Make sure that snoop states almost entirely operate from cc signals
+Work on snop handling states first
+
+Need 3-4 states to handle left side of MSI
+->handle misses essentially
+->must we well coordinated with state machine in coherence, other dcache
+->handle from ccsignals
+->dwait can just be used to know when done reading/writing
+
+
+Can remove hit count logic, doesn't matter
+
+Coordinate states between coherence and dcache for debug
+*/
+
+
+
 	//Local Variables
 
 	//	States for cache function

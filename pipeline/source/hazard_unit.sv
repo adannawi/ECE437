@@ -1,5 +1,5 @@
-/* Ziad Dannawi
-  Hazard Unit code
+/* Ziad Dannawi, Noah Petersen
+  Hazard/FW Unit code
 */
 
 
@@ -115,16 +115,6 @@ always_comb begin
 		end
   end
 
-	/*
-	if (huif.MemRead_Mem & ((huif.memDest == huif.rs) || (huif.memDest == huif.rt ))) begin
-    if (huif.memDest != 0) begin
-    	huif.PCStall = 1;
-    	huif.fetch_stall = 1;
-    	huif.decode_stall = 1;
-    	huif.decode_flush = 1;
-  	end
-  end
-	*/
 	//Handle dependency where normally fw'd data gets flushed by either SW or LW (and is not directed at 0)
 	if (huif.writeReg_mem && ((huif.memDest == huif.rs) || (huif.memDest == huif.rt)) && ((huif.opcode == SW) || (huif.opcode == LW))) begin
 		if (huif.memDest != 5'b00000) begin
@@ -157,23 +147,3 @@ always_comb begin
 
 end
 endmodule
-  // Handle RAW Hazard //
-  // Commented because this should now be handled in the forwarding unit
-  /*
-  if (huif.writeReg_exec && ((huif.execDest == huif.rs) || (huif.execDest == huif.rt))) begin
-    if (huif.memDest != 0) begin
-      huif.PCStall = 1;
-      huif.fetch_stall = 1;
-      huif.decode_flush = 1;
-    end
-  end
-
-  if (huif.writeReg_mem && ((huif.memDest == huif.rs) || (huif.memDest == huif.rt))) begin
-    if (huif.memDest != 0) begin
-      huif.PCStall = 1;
-      huif.fetch_stall = 1;
-      huif.decode_flush = 1;
-    end
-  end
-  */
-
