@@ -361,12 +361,16 @@ always_comb begin
       ccif.ramWEN = coif.ramWEN;
       ccif.ramREN = coif.ramREN;
       ccif.dload[servicing] = coif.dload[servicing];
+      ccif.ccsnoopaddr[~servicing] = coif.ccsnoopaddr[~servicing];
+      ccif.ccwait[~servicing] = coif.ccwait[~servicing];
     end else begin // No coherence
       ccif.ramaddr = mmif.ramaddr;
       ccif.ramstore = mmif.ramstore;
       ccif.ramWEN = mmif.ramWEN;
       ccif.ramREN = mmif.ramREN;
       ccif.dload[servicing] = mmif.dload[servicing];
+      ccif.ccsnoopaddr[~servicing] = mmif.daddr[~servicing];
+      ccif.ccwait[~servicing] = mmif.ccwait[~servicing];
       // other stuff
     end
 
