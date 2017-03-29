@@ -359,6 +359,7 @@ always_comb begin
     coif.ramstore = ccif.dstore[~servicing];
     coif.ramWEN = 1;
     coif.dload[servicing] = ccif.dstore[~servicing];
+    coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccwait[~servicing] = 1;
   end
   CTC2: begin
@@ -367,6 +368,7 @@ always_comb begin
     coif.ramWEN = 1;
     coif.dload[servicing] = ccif.dstore[~servicing]; 
     coif.ccwait[~servicing] = 1;
+    coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccinv[~servicing] = 1;
   end
   MEM1: begin
@@ -374,13 +376,15 @@ always_comb begin
     coif.ramstore = 0;
     coif.ramREN = 1;
     coif.dload[servicing] = ccif.ramload;
+    coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccwait[~servicing] = 1;
   end
   MEM2: begin
     coif.ramaddr = ccif.daddr[~servicing];
     coif.ramstore = 0;
     coif.ramREN = 1;
-    coif.dload[servicing] = ccif.ramload; 
+    coif.dload[servicing] = ccif.ramload;
+    coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccwait[~servicing] = 1;
   end
   default: begin
