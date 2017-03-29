@@ -145,6 +145,9 @@ end
 //iwait
 always_comb begin
   ccif.iwait[servicing] = 1;
+  if (ccif.iREN[~servicing]) begin
+    ccif.iwait[~servicing] = 1;
+  end
   if ((ccif.dREN[servicing] == 1) || (ccif.dWEN[servicing] == 1)) begin
     if (ccif.iREN[servicing] == 1) begin
       ccif.iwait[servicing] = 1;
@@ -171,7 +174,10 @@ end
 
 //dwait
 always_comb begin
-    ccif.dwait[servicing] = 0;
+  ccif.dwait[servicing] = 0;
+  if (ccif.dWEN[~servicing] | ccif.dREN[~servicing]) begin
+    ccif.dwait[~servicing] = 1;
+  end
   if((ccif.dREN[servicing] == 1) || (ccif.dWEN[servicing] == 1)) begin
     //RAM State dependent
     if(ccif.ramstate == FREE) begin
@@ -180,6 +186,7 @@ always_comb begin
     end else if(ccif.ramstate == BUSY) begin
       //Waiting for RAM to respond
       ccif.dwait[servicing] = 1;
+
     end else if(ccif.ramstate == ACCESS) begin
       //RAM returned
       ccif.dwait[servicing] = 0;
