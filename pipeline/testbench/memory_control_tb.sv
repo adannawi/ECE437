@@ -109,6 +109,7 @@ assign = tbccif.ramREN;
     wait1();
     tb_nRST = 1;
     initialize_values();
+    wait1();
     //Initialize values
 /*
     tbccif.iREN = 0;
@@ -118,13 +119,10 @@ assign = tbccif.ramREN;
     tbccif.iaddr = 0;
     tbccif.daddr = 0;
 */
-    tbc1.iREN = 0;
-    tbc1.dWEN = 0;
-    tbc1.dREN = 0;
-    tbc1.dstore = 0;
-    tbc1.iaddr = 0;
-    tbc1.daddr = 0;
-    wait5();
+
+
+
+
 /*
     //Test to see whether dWEN or iREN superceds the other
     tbc1.iREN = 1;
@@ -141,28 +139,28 @@ assign = tbccif.ramREN;
     //Test Case 1
     //Assert processor 1, test that instruction is gotten right
     Test_Case = 1;
-    wait1();
-    P1_read_instr(32'h00000000);
+    P1_read_instr(32'h0000FF04);
     receive_P1_instr();
 
     //Test Case 2
     //Assert other processor, check that imstruction is gotten right
+    
     Test_Case = 2;
-    wait1();
-    P2_read_instr(32'h00000004);
+    P2_read_instr(32'h0000FF00);
     receive_P2_instr();
-    wait1();
+    
 
 
     //Test Case 3
     //Assert both instruction requests, should prioritize 1
     //Once done, keep 1's asserted to check that two then one
     //are done in the correct order to test the round-robin system
+   
     Test_Case = 3;
-    wait1();
+    
     //Assert both instructions simulataneously
-    P1_read_instr(32'h00000008);
-    P2_read_instr(32'h0000000C);
+    P1_read_instr(32'h0000FF08);
+    P2_read_instr(32'h0000FF0C);
 
     //This will hang if iwait for correct processor does not go low
     receive_P1_instr();
@@ -175,21 +173,24 @@ assign = tbccif.ramREN;
     //Test Case 4
     //Assert processor 1, test that data is gotten right
     Test_Case = 4;
-    P1_write_data(32'h00000010, 32'hDEAD0000, 32'h0000BEEF);
+    P1_write_data(32'h0000FF10, 32'hDEAD0000, 32'h0000BEEF);
 
 
     //Test Case 5
+    wait1();
     Test_Case = 5;
     //Assert other processor, check that data is gotten right
-    P2_write_data(32'h00000018, 32'hECE00000, 32'h00043700);
+    P2_write_data(32'h0000FF18, 32'hECE00000, 32'h00043700);
 
     //Test Case 6
+    wait1();
     Test_Case = 6;
     //Assert both data Write requests, should prioritize 1
     //Once done, keep 1's asserted to check that two then one
-    //are done in the correct order to test the round-robin system
+    //are done in the correct order to test tsim:/memory_control_tb/DUT/ccif/ramREN
+    //he round-robin system
     //Get one starting address, same data gets written to each
-    P1P2_write_data(32'h00000020, 32'hDEADBEEF, 32'hECE43700);
+    P1P2_write_data(32'h0000FF20, 32'hDEADBEEF, 32'hECE43700);
 
 
     //Coherence Testing
@@ -202,16 +203,22 @@ assign = tbccif.ramREN;
     //  Need to supply:
     //    Data "from" P2
     //    Write signals "from" P2 
+    wait1();
     Test_Case = 7;
+    coherence_ctc(32'h0000FF30,0); //This will be for 2 addresses
+    
 
     //Test Case 8
     //Test a Write from P1 where P2 does not assert ccwrite to indicate that
     //it does not have the data and writes back. 
+    wait1();
     Test_Case = 8;
+    coherence_mem(32'h0000FF38,0);
 
     //Coherence Round Robin
 
     //Test Case 9
+    wait1();
     Test_Case = 9;
     //Repeat 7 & 8 At the same time
 
@@ -221,6 +228,7 @@ assign = tbccif.ramREN;
 
     //Test Case 10
     //Test that data beats instruction
+    wait1();
     Test_Case = 10;
 
 
@@ -262,7 +270,7 @@ assign = tbccif.ramREN;
   task wait1();
     begin
       @(posedge tb_CLK);
-      tbc1.iREN = 1; //Reset iREN so it "does" something
+      tb_nRST = 1; //Reset iREN so it "does" something
     end
   endtask
 
@@ -284,6 +292,103 @@ assign = tbccif.ramREN;
   endtask
 
 
+
+
+  task coherence_ctc(input word_t address, input logic target);
+    begin
+      //Do for dWEN, dREN would just always be more or less the same
+      //Just ends up in different implied state
+      if (target) begin
+        tbc2.dREN = 1;
+        tbc2.daddr = address; //This should be same as ccsnoopaddr
+        tbc2.cctrans = 1;
+      end else begin
+        tbc1.dREN = 1;
+        tbc1.daddr = address; //This should be same as ccsnoopaddr
+        tbc1.cctrans = 1;
+      end
+       
+      //Wait for arbitrate state
+      @(posedge tb_CLK)
+      
+      //Say other processor has data
+      if (target) begin
+        tbc1.ccwrite = 1;
+      end else begin
+        tbc2.ccwrite = 1;
+      end
+      //Wait for CTC1
+      @(posedge tb_CLK)
+      if (target) begin
+        tbc1.daddr = 1;
+        tbc1.dstore = 32'hDEAD0000;
+      end else begin
+        tbc2.daddr = 1;
+        tbc2.dstore = 32'hDEAD0000;
+      end
+      //Wait for data to be written back
+      @(negedge tbccif.dwait[~target]);
+      if (target) begin
+        tbc1.daddr = 1;
+        tbc1.dstore = 32'h0000BEEF;
+      end else begin
+        tbc2.daddr = 1;
+        tbc2.dstore = 32'h0000BEEF;
+      end
+      //Wait for data to be written back
+      @(negedge tbccif.dwait[~target]);
+      tbc2.dstore = 0;
+      tbc2.daddr = 0;
+      tbc2.dREN = 0;
+      tbc1.dstore = 0;
+      tbc1.daddr = 0;
+      tbc1.dREN = 0;
+      tbccif.cctrans[target] = 0;
+      tbccif.ccwrite[~target] = 0;
+    end
+  endtask
+
+  task coherence_mem(input word_t address,input logic target);
+    begin
+      //Do for dWEN, dREN would just always be more or less the same
+      //Just ends up in different implied state
+      if (target) begin
+        tbc2.dREN = 1;
+        tbc2.daddr = address; //This should be same as ccsnoopaddr
+        tbc2.cctrans = 1;
+      end else begin
+        tbc1.dREN = 1;
+        tbc1.daddr = address; //This should be same as ccsnoopaddr
+        tbc1.cctrans = 1;
+      end
+      
+      //tbccif.cctrans[target] = 1;
+      //daddr = address; //This should be same as ccsnoopaddr
+      //Wait for arbitrate state
+      @(posedge tb_CLK);
+      
+      //Say other processor has data
+
+
+      //Wait for CTC1
+      @(posedge tb_CLK);
+
+      //Wait for data to be written back
+      @(negedge tbccif.dwait[~target]);
+
+      //Wait for data to be written back
+      @(negedge tbccif.dwait[~target]);
+      tbc2.dstore = 0;
+      tbc2.daddr = 0;
+      tbc2.dWEN = 0;
+      tbc1.dstore = 0;
+      tbc1.daddr = 0;
+      tbc1.dWEN = 0;
+      tbccif.cctrans[target] = 0;
+      tbccif.ccwrite[~target] = 0;
+    end
+  endtask
+
   task initialize_values();
     begin
       //Since RAM is actually used, we can just set the signals
@@ -291,17 +396,23 @@ assign = tbccif.ramREN;
       //for a more realistic imulation
 
       //Set cache-side memory control signals
-      tbccif.iREN = 0;
-      tbccif.dREN = 0;
-      tbccif.dWEN = 0;
-      tbccif.dstore = 0;
-      tbccif.iaddr[0] = 0;
-      tbccif.iaddr[1] = 0;
-      tbccif.daddr = 0;
-
+      tbc1.iREN = 0;
+      tbc1.dWEN = 0;
+      tbc1.dREN = 0;
+      tbc1.dstore = 0;
+      tbc1.iaddr = 0;
+      tbc1.daddr = 0;
+      tbc1.ccwrite = 0;
+      tbc1.cctrans = 0;
       //Coherehence from Processors
-      tbccif.ccwrite = 0;
-      tbccif.cctrans = 0;
+      tbc2.iREN = 0;
+      tbc2.dWEN = 0;
+      tbc2.dREN = 0;
+      tbc2.dstore = 0;
+      tbc2.iaddr = 0;
+      tbc2.daddr = 0;
+      tbc2.ccwrite = 0;
+      tbc2.cctrans = 0;
 
       //Ram inputs will be set by ram instantiation for TB
     end
@@ -316,8 +427,8 @@ assign = tbccif.ramREN;
     //Target all read assertions to processor 1 signals
     //@(posedge tb_CLK)
     //Setup values to read from mem
-    tbccif.iREN[0] = 1;
-    tbccif.iaddr[0] = address;
+    tbc1.iREN = 1;
+    tbc1.iaddr = address;
     end
   endtask
 
@@ -325,12 +436,13 @@ assign = tbccif.ramREN;
   task receive_P1_instr();
     begin
     //Target all read assertions to processor 1 signals
-    @(negedge tbccif.iwait)
-    @(negedge tb_CLK)
+    @(negedge tbc1.iwait)
+    #(1);
+    @(posedge tb_CLK)
 
     //Reset iREN and iaddr since request is "done"
-    tbccif.iREN[0] = 0;
-    tbccif.iaddr[0] = 0;
+    tbc1.iREN = 0;
+    tbc1.iaddr = 0;
     end
   endtask
 
@@ -345,8 +457,8 @@ assign = tbccif.ramREN;
     //Target all read assertions to processor 1 signals
     //@(posedge tb_CLK)
     //Setup values to read from mem
-    tbccif.iREN[1] = 1;
-    tbccif.iaddr[1] = address;
+    tbc2.iREN = 1;
+    tbc2.iaddr = address;
     end
   endtask
 
@@ -354,12 +466,13 @@ assign = tbccif.ramREN;
   task receive_P2_instr();
     begin
     //Target all read assertions to processor 1 signals
-    @(negedge tbccif.iwait);
+    @(negedge tbc2.iwait);
+    #(1);
     @(posedge tb_CLK);
 
     //Reset iREN and iaddr since request is "done"
-    tbccif.iREN[1] = 0;
-    tbccif.iaddr[1] = 0;
+    tbc2.iREN = 0;
+    tbc2.iaddr = 0;
     end
   endtask
 
@@ -367,18 +480,18 @@ assign = tbccif.ramREN;
   task P1_write_data(input word_t address, input word_t data1, input word_t data2);
     begin
       //Initialize data to write
-      tbccif.dWEN[0] = 1;
-      tbccif.daddr[0] = address;
-      tbccif.dstore[0] = data1;
+      tbc1.dWEN = 1;
+      tbc1.daddr = address;
+      tbc1.dstore = data1;
       @(negedge tbccif.dwait[0]);
       @(posedge tb_CLK);
-      tbccif.daddr[0] = address + 4;
-      tbccif.dstore[0] = data2;
+      tbc1.daddr = address + 4;
+      tbc1.dstore = data2;
       @(negedge tbccif.dwait[0]);
       @(posedge tb_CLK);
-      tbccif.dWEN[0] = 0;
-      tbccif.daddr[0] = 0;
-      tbccif.dstore[0] = 0;
+      tbc1.dWEN = 0;
+      tbc1.daddr = 0;
+      tbc1.dstore = 0;
     end
   endtask
 
@@ -386,60 +499,60 @@ assign = tbccif.ramREN;
   task P2_write_data(input word_t address, input word_t data1, input word_t data2);
     begin
       //Initialize data to write
-      tbccif.dWEN[1] = 1;
-      tbccif.daddr[1] = address;
-      tbccif.dstore[1] = data1;
+      tbc2.dWEN = 1;
+      tbc2.daddr = address;
+      tbc2.dstore = data1;
       @(negedge tbccif.dwait[1]);
       //@(posedge tb_CLK);
-      tbccif.daddr[1] = address + 4;
-      tbccif.dstore[1] = data2;
+      tbc2.daddr = address + 4;
+      tbc2.dstore = data2;
       //@(negedge tbccif.dwait[1]);
       //@(posedge tb_CLK);
-      tbccif.dWEN[1] = 0;
-      tbccif.daddr[1] = 0;
-      tbccif.dstore[1] = 0;
+      tbc2.dWEN = 0;
+      tbc2.daddr = 0;
+      tbc2.dstore = 0;
     end
   endtask
 
   task P1P2_write_data(input word_t address,input word_t data1,input word_t data2);
     begin
         //Assert all at once
-        tbccif.dWEN[0] = 1;
-        tbccif.daddr[0] = address;
-        tbccif.dstore[0] = data1;
-        tbccif.dWEN[1] = 1;
-        tbccif.daddr[1] = address + 8;
-        tbccif.dstore[1] = data1;
+        tbc1.dWEN = 1;
+        tbc1.daddr = address;
+        tbc1.dstore = data1;
+        tbc2.dWEN = 1;
+        tbc2.daddr = address;
+        tbc2.dstore = data1;
         write_delay_p1();
         //Change P1's data
-        tbccif.daddr[0] = address + 4;
-        tbccif.dstore[0] = data2;
+        tbc1.daddr = address + 4;
+        tbc1.dstore = data2;
 
         write_delay_p1();
 
         //Reset P1
-        tbccif.dWEN[0] = 0;
-        tbccif.daddr[0] = 0;
-        tbccif.dstore[0] = 0;
+        tbc1.dWEN = 0;
+        tbc1.daddr = 0;
+        tbc1.dstore = 0;
 
         //Now that P1 is done wait for P2
         write_delay_p2();
-        tbccif.daddr[1] = address + 12;
-        tbccif.dstore[1] = data2;
+        tbc2.daddr = address + 12;
+        tbc2.dstore = data2;
 
         write_delay_p2();
 
         //Reset P1
-        tbccif.dWEN[1] = 0;
-        tbccif.daddr[1] = 0;
-        tbccif.dstore[1] = 0;
+        tbc2.dWEN = 0;
+        tbc2.daddr = 0;
+        tbc2.dstore = 0;
 
     end
   endtask
 
   task write_delay_p1 ();
     begin
-    @(negedge tbccif.dwait[0]);
+    @(negedge tbc1.dwait);
     @(posedge tb_CLK);
     tb_nRST = 1;
     end
@@ -447,7 +560,7 @@ assign = tbccif.ramREN;
 
   task write_delay_p2 ();
     begin
-    @(negedge tbccif.dwait[1]);
+    @(negedge tbc2.dwait);
     @(posedge tb_CLK);
     tb_nRST = 1;
     end
