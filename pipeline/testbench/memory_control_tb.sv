@@ -320,31 +320,46 @@ assign = tbccif.ramREN;
       //Wait for CTC1
       @(posedge tb_CLK)
       if (target) begin
-        tbc1.daddr = 1;
+        tbc1.daddr = 32'hFFFF0000;
         tbc1.dstore = 32'hDEAD0000;
       end else begin
-        tbc2.daddr = 1;
+        tbc2.daddr = 32'hFFFF0000;
         tbc2.dstore = 32'hDEAD0000;
       end
+
       //Wait for data to be written back
-      @(negedge tbccif.dwait[~target]);
       if (target) begin
-        tbc1.daddr = 1;
+        @(negedge tbc1.dwait);
+      end else begin
+        @(negedge tbc2.dwait);
+      end
+
+
+      if (target) begin
+        tbc1.daddr = 32'hFFFF0004;
         tbc1.dstore = 32'h0000BEEF;
       end else begin
-        tbc2.daddr = 1;
+        tbc2.daddr = 32'hFFFF0004;
         tbc2.dstore = 32'h0000BEEF;
       end
+      
       //Wait for data to be written back
-      @(negedge tbccif.dwait[~target]);
+      if (target) begin
+        @(negedge tbc1.dwait);
+      end else begin
+        @(negedge tbc2.dwait);
+      end
+
       tbc2.dstore = 0;
       tbc2.daddr = 0;
       tbc2.dREN = 0;
       tbc1.dstore = 0;
       tbc1.daddr = 0;
       tbc1.dREN = 0;
-      tbccif.cctrans[target] = 0;
-      tbccif.ccwrite[~target] = 0;
+      tbc1.ccwrite = 0;
+      tbc2.ccwrite = 0;
+      tbc2.cctrans = 0;
+      tbc1.cctrans = 0;
     end
   endtask
 
@@ -380,12 +395,14 @@ assign = tbccif.ramREN;
       @(negedge tbccif.dwait[~target]);
       tbc2.dstore = 0;
       tbc2.daddr = 0;
-      tbc2.dWEN = 0;
+      tbc2.dREN = 0;
       tbc1.dstore = 0;
       tbc1.daddr = 0;
-      tbc1.dWEN = 0;
-      tbccif.cctrans[target] = 0;
-      tbccif.ccwrite[~target] = 0;
+      tbc1.dREN = 0;
+      tbc1.ccwrite = 0;
+      tbc2.ccwrite = 0;
+      tbc2.cctrans = 0;
+      tbc1.cctrans = 0;
     end
   endtask
 
