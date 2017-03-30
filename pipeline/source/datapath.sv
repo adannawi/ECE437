@@ -465,21 +465,27 @@ module datapath (
         1       0       stall pipe
         1       1       move pipe forward -> let everything progress as normal
   */
-  logic pipestall;
+  logic stall_for_cache; //previously "pipestall";
 
   //Really just stall the pipe on !dhit -> BUT ONLY IF WE WANT DATA
-  assign pipestall = (!dhit && (exif.dWENOUT | exif.dRENOUT));
-  assign bubble = !ihit && !pipestall;
+  assign stall_for_cache = (!dhit && (exif.dWENOUT | exif.dRENOUT));
+  assign bubble = !ihit && !stall_for_cache;
   
+  //Must tie pipestall to all signals, because even if it normally wouldn't matter to flush, we
+  //already know it should work if we only flush when it moves forward (as with ihit before)
+
   //For caches
-  assign feif.flush = huif.fetch_flush ; //(ihit | dhit);
-  assign feif.enable = !huif.fetch_stall;
-  assign deif.flush = huif.decode_flush;
-  assign deif.enable = !huif.decode_stall; //(ihit | dhit);
-  assign exif.flush = huif.execute_flush;
-  assign exif.enable = !huif.execute_stall; //(ihit | dhit);
-  assign mmif.flush = huif.memory_flush; // & ihit;
-  assign mmif.enable = !huif.memory_stall;
+  assign feif.flush = huif.fetch_flush && !stall_for_cache; //Flushed for branches
+  assign feif.enable = !huif.fetch_stall && !stall_for_cache && !bubble; //Only used
+ 
+  assign deif.flush = huif.decode_flush && !stall_for_cache; //Flushed for branches
+  assign deif.enable = !huif.decode_stall && !stall_for_cache && !bubble; //Used for several hazards, including Load-use
+ 
+  assign exif.flush = huif.execute_flush && bubble && !stall_for_cache; //Used for dhits, bubbling
+  assign exif.enable = !huif.execute_stall && !stall_for_cache; //(ihit | dhit);
+
+  assign mmif.flush = huif.memory_flush && !stall_for_cache; //Not used
+  assign mmif.enable = !huif.memory_stall && !stall_for_cache;
   /*
   assign feif.flush = (huif.fetch_flush && ihit) || (bubble); //(ihit | dhit);
   assign feif.enable = !huif.fetch_stall && ihit && !pipestall;
