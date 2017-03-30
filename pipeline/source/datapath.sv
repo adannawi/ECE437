@@ -472,6 +472,15 @@ module datapath (
   assign bubble = !ihit && !pipestall;
   
   //For caches
+  assign feif.flush = huif.fetch_flush ; //(ihit | dhit);
+  assign feif.enable = !huif.fetch_stall;
+  assign deif.flush = huif.decode_flush;
+  assign deif.enable = !huif.decode_stall; //(ihit | dhit);
+  assign exif.flush = huif.execute_flush;
+  assign exif.enable = !huif.execute_stall; //(ihit | dhit);
+  assign mmif.flush = huif.memory_flush; // & ihit;
+  assign mmif.enable = !huif.memory_stall;
+  /*
   assign feif.flush = (huif.fetch_flush && ihit) || (bubble); //(ihit | dhit);
   assign feif.enable = !huif.fetch_stall && ihit && !pipestall;
   assign deif.flush = huif.decode_flush && ihit;
@@ -480,7 +489,7 @@ module datapath (
   assign exif.enable = !huif.execute_stall && ihit && !pipestall; //(ihit | dhit);
   assign mmif.flush = huif.memory_flush; // & ihit;
   assign mmif.enable = !huif.memory_stall && (ihit || dhit) && !pipestall;
-
+*/
 /*  Pipeline version signals
   assign feif.flush = huif.fetch_flush & ihit; //(ihit | dhit);
   assign feif.enable = !huif.fetch_stall & ihit;
