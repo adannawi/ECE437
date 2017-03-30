@@ -203,25 +203,25 @@ end
 
 //dwait
 always_comb begin
-  ccif.dwait = '0;
+  mmif.dwait = '0;
   if (ccif.dWEN[~servicing] | ccif.dREN[~servicing]) begin
-    ccif.dwait[~servicing] = 1;
+    mmif.dwait[~servicing] = 1;
   end
   if((ccif.dREN[servicing] == 1) || (ccif.dWEN[servicing] == 1)) begin
     //RAM State dependent
     if(ccif.ramstate == FREE) begin
       //If want a request but ram hasnt registered yet
-      ccif.dwait[servicing] = 1;
+      mmif.dwait[servicing] = 1;
     end else if(ccif.ramstate == BUSY) begin
       //Waiting for RAM to respond
-      ccif.dwait[servicing] = 1;
+      mmif.dwait[servicing] = 1;
 
     end else if(ccif.ramstate == ACCESS) begin
       //RAM returned
-      ccif.dwait[servicing] = 0;
+      mmif.dwait[servicing] = 0;
     end else begin
       //Error state, probably not good to register this
-      ccif.dwait[servicing] = 1;
+      mmif.dwait[servicing] = 1;
     end
   end
 end
@@ -335,6 +335,7 @@ always_comb begin
   coif.ramWEN = '0;
   coif.ramREN = '0;
   coif.dload = ccif.daddr[servicing];
+  coif.dwait = 0;
   casez(state)
   IDLE: begin
     coif.ccwait[~servicing] = 0;
@@ -345,14 +346,20 @@ always_comb begin
     coif.ramWEN = 0;
     coif.ramREN = 0;
     coif.dload[servicing] = 0;
+    coif.dwait[servicing] = 0;
+    coif.dwait[~servicing] = 0;
     end // default:
   ARBITRATE: begin
     coif.ccwait[~servicing] = 1;
     coif.ccinv[~servicing] = ccif.ccwrite[servicing];
+    coif.dwait[servicing] = 1;
+    coif.dwait[~servicing] = 1;
   end
   SNOOP: begin
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccwait[~servicing] = 1;
+    coif.dwait[servicing] = 1;
+    coif.dwait[~servicing] = 1;
   end
   CTC1: begin
     coif.ramaddr = ccif.daddr[~servicing];
@@ -361,6 +368,8 @@ always_comb begin
     coif.dload[servicing] = ccif.dstore[~servicing];
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccwait[~servicing] = 1;
+    coif.dwait[servicing] = mmif.dwait[servicing];
+    coif.dwait[~servicing] = mmif.dwait[servicing];
   end
   CTC2: begin
     coif.ramaddr = ccif.daddr[~servicing];
@@ -370,6 +379,8 @@ always_comb begin
     coif.ccwait[~servicing] = 1;
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccinv[~servicing] = 1;
+    coif.dwait[servicing] = mmif.dwait[servicing];
+    coif.dwait[~servicing] = mmif.dwait[servicing];
   end
   MEM1: begin
     coif.ramaddr = ccif.daddr[~servicing];
@@ -378,6 +389,8 @@ always_comb begin
     coif.dload[servicing] = ccif.ramload;
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccwait[~servicing] = 1;
+    coif.dwait[servicing] = mmif.dwait[servicing];
+    coif.dwait[~servicing] = mmif.dwait[~servicing];
   end
   MEM2: begin
     coif.ramaddr = ccif.daddr[~servicing];
@@ -386,6 +399,8 @@ always_comb begin
     coif.dload[servicing] = ccif.ramload;
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccwait[~servicing] = 1;
+    coif.dwait[servicing] = mmif.dwait[servicing];
+    coif.dwait[~servicing] = mmif.dwait[~servicing];
   end
   default: begin
     coif.ccwait[~servicing] = 0;
@@ -396,6 +411,8 @@ always_comb begin
     coif.ramWEN = 0;
     coif.ramREN = 0;
     coif.dload[servicing] = 0;
+    coif.dwait[servicing] = 0;
+    coif.dwait[~servicing] = 0;
   end    
 endcase
 end 
@@ -419,13 +436,14 @@ always_comb begin
       ccif.ramWEN = coif.ramWEN;
       ccif.ramREN = coif.ramREN;
       ccif.dload = coif.dload;
+      ccif.dwait = coif.dwait;
     end else begin // No coherence
       ccif.ramaddr = mmif.ramaddr;
       ccif.ramstore = mmif.ramstore;
       ccif.ramWEN = mmif.ramWEN;
       ccif.ramREN = mmif.ramREN;
       ccif.dload = mmif.dload;
-
+      ccif.dwait = mmif.dwait;
 
       // other stuff
     end
