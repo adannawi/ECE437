@@ -22,6 +22,8 @@ interface exec_if;
   logic MemtoRegIN, MemtoRegOUT;
   logic dWENIN, dWENOUT;
   logic dRENIN, dRENOUT;
+  word_t InstructionIN, InstructionOUT;
+
 
 
   logic RegWDSelIN, RegWDSelOUT;
@@ -36,16 +38,16 @@ interface exec_if;
 
   modport ex  (
     input PCIncIN, writeRegIN, MemtoRegIN, RegWDSelIN, dWENIN, dRENIN, opcodeIN,
-    busBIN, resultIN, rwIN, flush, enable,
+    busBIN, resultIN, rwIN, flush, enable, InstructionIN,
     output PCIncOUT, writeRegOUT, MemtoRegOUT, RegWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
-	   busBOUT, resultOUT, rwOUT
+	   busBOUT, resultOUT, rwOUT, InstructionOUT
   );
 
   modport tb  (
     input PCIncOUT, writeRegOUT, MemtoRegOUT, RegWDSelOUT, dWENOUT, dRENOUT, opcodeOUT,
-	   busBOUT, resultOUT, rwOUT,
+	   busBOUT, resultOUT, rwOUT, InstructionOUT,
     output PCIncIN, writeRegIN, MemtoRegIN, RegWDSelIN, dWENIN, dRENIN,
-           opcodeIN, busBIN, resultIN, rwIN
+           opcodeIN, busBIN, resultIN, rwIN, InstructionIN
 
   );
 

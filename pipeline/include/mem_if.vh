@@ -20,6 +20,7 @@ interface mem_if;
   logic writeRegIN, writeRegOUT;
   logic MemtoRegIN, MemtoRegOUT;
   word_t PCIncIN, PCIncOUT;
+  word_t InstructionIN, InstructionOUT;
   //logic dWEN;
   //logic dREN;
   logic [4:0] rwIN, rwOUT;
@@ -33,14 +34,14 @@ interface mem_if;
 
   modport my  (
     input PCIncIN, writeRegIN, MemtoRegIN, RegWDSelIN, opcodeIN,
-	  resultIN, rwIN, dmemloadIN, enable, flush,
+	  resultIN, rwIN, dmemloadIN, enable, flush, InstructionIN,
     output PCIncOUT, writeRegOUT, MemtoRegOUT, RegWDSelOUT, opcodeOUT,
-    dmemloadOUT, resultOUT, rwOUT
+    dmemloadOUT, resultOUT, rwOUT, InstructionOUT
   );
 
   modport tb  (
-    input PCIncOUT, writeRegOUT, MemtoRegOUT, RegWDSelOUT, opcodeOUT, dmemloadOUT, resultOUT, rwOUT,
-    output PCIncIN, writeRegIN, MemtoRegIN, RegWDSelIN, opcodeIN, resultIN, rwIN, dmemloadIN, enable, flush
+    input PCIncOUT, writeRegOUT, MemtoRegOUT, RegWDSelOUT, opcodeOUT, dmemloadOUT, resultOUT, rwOUT, InstructionOUT,
+    output PCIncIN, writeRegIN, MemtoRegIN, RegWDSelIN, opcodeIN, resultIN, rwIN, dmemloadIN, enable, flush, InstructionIN
   );
 
 endinterface
