@@ -7,258 +7,295 @@
 module dcache_tb;
 	import cpu_types_pkg::*;
 	parameter PERIOD = 10;
-	logic CLK = 1;
-	logic nRST;
+	logic tb_clk = 1;
+	logic tb_nRST;
+	int testcase;
 
-	always #(PERIOD/2) CLK++;
+	always #(PERIOD/2) tb_clk++;
 
-	caches_if cif (); 
-	datapath_cache_if dif ();
-	//test PROG (CLK, nRST, cif, dif);
-	dcache DUT (CLK, nRST, dif, cif);
+	caches_if tbcif1(); 
+	caches_if tbcif2();
+	cpu_ram_if tbrif();
+	cache_control_if tbccif(tbcif1, tbcif2);
 
-	//tb signals to set for "datapath": halt, dmemREN, dmemWEN, dmemstore, dmemaddr,
-    //tb signals to read 'from' "datapath":  dhit, dmemload, flushed
+	datapath_cache_if dif1();
+	datapath_cache_if dif2();
 
-    //tb signals to set for "mem control": dload, dwait
-    //tb signals to read for "mem control": dREN, dWEN, daddr, dstore
+	// Connect RAM inputs to Cache Control
+	assign tbrif.ramaddr = tbccif.ramaddr;
+	assign tbrif.ramstore = tbccif.ramstore;
+	assign tbrif.ramREN = tbccif.ramREN;
+	assign tbrif.ramWEN = tbccif.ramWEN;
+	assign tbccif.ramload = tbrif.ramload;
+	assign tbccif.ramstate = tbrif.ramstate;
 
+	// Map the DCache - Fix this to support multicore
+	dcache DUT (
+		.CLK(tb_clk),
+		.nRST(tb_nRST),
+		.dcif(dif1),
+		.cif(tbcif1)
+	);
 
-//program test
-	//(
-		//input logic CLK,
-		//output logic nRST,
-		//caches_if cif,
-		//datapath_cache_if dif
-	//);
+	dcache dcache2 (
+		.CLK(tb_clk),
+		.nRST(tb_nRST),
+		.dcif(dif2),
+		.cif(tbcif2)
+	);
 
+	// Map the RAM
+	ram dat_ram(
+		.CLK(tb_clk),
+		.nRST(tb_nRST),
+		.ramif(tbrif)
+	);
 
-///////////////////
-// 1. Initial miss
-// 2. Hits
-// 3. LRU
-// 4. LRU Replacement
-// 5. Writes/Reads
-// 6. Capacity
-// 7. Hit counter
+	// Map the Memory Controller
+
+	memory_control memory_control(
+		.CLK(tb_clk),
+		.nRST(tb_nRST),
+		.ccif(tbccif)
+	);
+
 ///////////////////
 //
 // Manually set address to 32 bits.
 //  [25:0] [2:0]  [1]     [1:0]
 //   TAG    IDX  BLKOFF  BYTEOFF                                   
 initial begin
-	logic [25:0] tbtag;
-	logic [2:0] tbidx;
-	logic tbblkoff;
-	logic [1:0]tbbyteoff;
-	integer i;
-	integer testcase;
 
-	@(negedge CLK);
-	nRST = 0;
-	@(posedge CLK);
-	@(negedge CLK);
-	nRST = 1;
-	@(posedge CLK);
+	// Need 5 test cases //
+	// 1. Test read/write BusRD and BusRDx, see if it snoops other core- if miss, read from memory
+	// 2. Test BusRD and BusRDx with cache in modify, see if cache-to-cache transfer happens
+	// 3. BusRDx on shared while other core is in shared- it should go to invalid state.
+	// 4. If no data is happening, instructions should be able to go through
+	// 5. See if instructions are doing fair flipping in datapath
+	// 6. Check if evictions happen without coherence (?)
 
-	///////////////////////
-	//Test 0:
-	//Populate the cache
-	///////////////////////
+	// Have the testbench act as the two datapaths while using 
+	// real memory controller (w/ coherence) and real ram
+	// for maximum testing (ideally)
+
 	testcase = 0;
-	for(i = 0; i < 16; i++) begin
-	tbtag = i * 2;
-	tbidx = i % 8;
-	tbblkoff = 0;
-	tbbyteoff = 0;
-	dif.dmemaddr = {tbtag, tbidx, tbblkoff, tbbyteoff};
-	dif.dmemstore = 32'hDEADBEEF;
-	dif.dmemREN = 1;
-	dif.dmemWEN = 0;
-	dif.halt = 0;
-	cif.dwait = 0;
-	cif.dload = (i < 8) ? 32'hece43700 : 32'hcadacada;
+	wait1();
+	tb_nRST = 0;
+	wait1();
+	tb_nRST = 1;
+	wait1();
 
-	@(posedge dif.dhit); // dhit??
-	@(negedge CLK);
-	cif.dwait = 1;
-	@(posedge CLK);
-	cif.dwait = 0;
-	end // for(i = 0; i < 8; i++)
-
-	///////////////////////
-	//Test 1:
-	//Load into set 0
-	///////////////////////
+	// Preliminary Test 0:
+	// Populate all cache entries to see if they work correctly
 	testcase++;
-	dif.dmemaddr = 32'b00000000000000000000000001000000;
-	dif.dmemstore = 32'hDEADBEEF;
-	dif.dmemREN = 1;
-	dif.dmemWEN = 0;
-	dif.halt = 0;
-	cif.dwait = 0;
-	cif.dload = 32'habcd1234;
+	populate_cache1();
+	wait10();
 
-	@(posedge dif.dhit); // dhit??
-	@(negedge CLK);
-	cif.dwait = 1;
-	@(posedge CLK);
-	cif.dwait = 0;
+	// This should reset the caches?
+	wait1();
+	tb_nRST = 0;
+	wait1();
+	tb_nRST = 1;
+	wait1();
 
-	///////////////////////
-	//Test 2:
-	//Load into set 0 (way 2 should be populated now)
-	///////////////////////
+	// Assuming the above actually resets the caches, then proceed accordingly
+	////// Test Case 1: Check for snoop miss & read from memory ///////
+	// Intended behavior to load index 0, tag 000F with 00001111
 	testcase++;
-	dif.dmemaddr = 32'b00000000000000000000000010000000;
-	dif.dmemstore = 32'hDEADBEEF;
-	dif.dmemREN = 1;
-	dif.dmemWEN = 0;
-	dif.halt = 0;
-	cif.dwait = 0;
-	cif.dload = 32'habcd4321;
+	load_cache1(26'h0000, 0, 0, 0, 32'h00001111); 
+	wait5();
 
-	@(posedge dif.dhit); // dhit??
-	@(negedge CLK);
-	cif.dwait = 1;
-	@(posedge CLK);
-	cif.dwait = 0;
+	// Intended behavior to load index 0, tag 000F with 00001111, but for cache 2
+	load_cache2(26'h000F, 0, 0, 0, 32'h00001111);
+	wait5();
 
-	///////////////////////
-	//Test 3:
-	//Load into set 1 
-	///////////////////////
+	// Store to cache 1 from datapath 1, should be in modified state now
+	write_to_cache2(26'h00FF, 1, 0, 0, 32'h11110000);
+	wait5();
+
+
+
+	/////// Test Case 2: Check for cache to cache transfer ///////
+	// This should conduct a cache to cache transfer I think (and go to shared)
 	testcase++;
-	dif.dmemaddr = 32'b00000000000000000000000001001000;
-	dif.dmemstore = 32'hDEADBEEF;
-	dif.dmemREN = 1;
-	dif.dmemWEN = 0;
-	dif.halt = 0;
-	cif.dwait = 0;
-	cif.dload = 32'habcd4321;
-
-	@(posedge dif.dhit); // dhit??
-	@(negedge CLK);
-	cif.dwait = 1;
-	@(posedge CLK);
-	cif.dwait = 0;
+	load_cache1(26'h00FF, 1, 0, 0, 32'h01010000);
+	wait5();
 
 
-	///////////////////////
-	//Test 4:
-	// Write from datapath to cache to set 0, should set dirty and LRU
-	///////////////////////
+
+	/////// Test Case 3: Check for invalidation on write ///////
+	// I think this is a BusRdX on shared, cache 2 should go to invalid
 	testcase++;
-	dif.dmemaddr = 32'b00000000000000000000001000000100;
-	dif.dmemstore = 32'hCADF00D;
-	dif.dmemREN = 0;
-	dif.dmemWEN = 1;
-	dif.halt = 0;
-	cif.dwait = 0;
-	cif.dload = 32'habcd4321;
+	write_to_cache1(26'h00FF, 1, 0, 0, 32'h0000F00D);
+	wait5();
 
-	@(posedge dif.dhit);
-	@(negedge CLK);
-	cif.dwait = 1;
-	@(posedge CLK);
-	cif.dwait = 0;
 
-	///////////////////////
-	//Test 5:
-	// Write from datapath to cache to set 0, should replace based on LRU & set dirty
-	///////////////////////
+	// If this doesn't work, may have to check if way is being set as intended (and modify testbench)
+	/////// Test Case 4: Check if eviction happens ///////
 	testcase++;
-	dif.dmemaddr = 32'b00000000000000000000010000000000;
-	dif.dmemstore = 32'hCADF00D;
-	dif.dmemREN = 0;
-	dif.dmemWEN = 1;
-	dif.halt = 0;
-	cif.dwait = 0;
-	cif.dload = 32'habcd4321;
+	write_to_cache1(26'h0001, 1, 0, 0, 32'h0B4DF00D);
+	wait5();
 
-	@(posedge dif.dhit);
-	@(negedge CLK);
-	cif.dwait = 1;
-	@(posedge CLK);
-	cif.dwait = 0;
-
-	///////////////////////
-	//Test 6:
-	// Try reading to set 0 now. Dirty so will need to be written back
-	///////////////////////
-	testcase++;
-	dif.dmemaddr = 32'b00000000000000000000000010000000;
-	dif.dmemstore = 32'hDEADBEEF;
-	dif.dmemREN = 1;
-	dif.dmemWEN = 0;
-	dif.halt = 0;
-	cif.dwait = 0;
-	cif.dload = 32'haabbccdd;
-
-	@(posedge dif.dhit); // dhit??
-	@(negedge CLK);
-	cif.dwait = 1;
-	@(posedge CLK);
-	cif.dwait = 0;
-
-	///////////////////////
-	//Test 7:
-	// Populate with dirties
-	///////////////////////
-	testcase++;
-	for(i = 0; i < 16; i++) begin
-	tbtag = (i * 2) + 1;
-	tbidx = i % 8;
-	tbblkoff = 0;
-	tbbyteoff = 0;
-	dif.dmemaddr = {tbtag, tbidx, tbblkoff, tbbyteoff};
-	dif.dmemstore = 32'hDEEDBEEF;
-	dif.dmemREN = 0;
-	dif.dmemWEN = 1;
-	dif.halt = 0;
-	cif.dwait = 0;
-	cif.dload = (i < 8) ? 32'hece43700 : 32'hcadacada;
-
-	@(posedge dif.dhit); // dhit??
-	@(negedge CLK);
-	cif.dwait = 1;
-	@(posedge CLK);
-	cif.dwait = 0;
-	end // for(i = 0; i < 8; i++)
-
-	///////////////////////
-	//Test 8:
-	// Halt and flush
-	///////////////////////
-	dif.halt = 1;
-	#10000;
-	$finish();
 end
 
+	// This is a dinky function to test and see if the cache
+	// populates right, this may or may not work.
 
-task memresponse(
-	input word_t data
-	);
-	begin
-		//Give data values, toggle dwait to simulate memory response
-		
-		@(negedge CLK);
-		if (cif.dREN | cif.dWEN) begin
-			cif.dwait = 1;
-			cif.dload = data;
-		end else begin
-			cif.dload = 32'hECE43700;
+	task populate_cache1();
+		begin
+		int lcv;
+		for (lcv = 0; lcv < 16; lcv++) begin
+			load_cache1(lcv*2, lcv%8, 0, 0, 32'h0420F00D);
 		end
-		@(posedge CLK);
-		cif.dwait = 0;
 	end
-endtask 
+	endtask
 
-task wait1 ();
-    begin
-	@(posedge CLK);
-	nRST = 1;
-    end
-endtask
+	// This task's purpose is to get data from the cache, and it should go to RAM if the data
+	// does not exist. Snooping will be conducted, and on a miss it will go to RAM.
+	task load_cache1(
+		input logic[25:0] tag,
+		input logic[2:0] idx,
+		input logic blk_off,
+		input logic[1:0] byte_off,
+		input word_t data
+		);
+		begin
+		@(negedge tb_clk);
+		dif1.dmemaddr = {tag, idx, blk_off, byte_off};
+		dif1.dmemREN = 1;
+		dif1.dmemWEN = 0;
+		tbcif1.dload = data;
+		@(posedge tb_clk);
+		end
+	endtask
+
+	// This task's purpose is to get data from the cache, and it should go to RAM if the data
+	// does not exist. Snooping will be conducted, and on a miss it will go to RAM.
+	// Difference is that this is for the second cache.
+	task load_cache2(
+		input logic[25:0] tag,
+		input logic[2:0] idx,
+		input logic blk_off,
+		input logic[1:0] byte_off,
+		input word_t data
+		);
+		begin
+		@(negedge tb_clk);
+		dif2.dmemaddr = {tag, idx, blk_off, byte_off};
+		dif2.dmemREN = 1;
+		dif2.dmemWEN = 0;
+		tbcif2.dload = data;
+		@(posedge tb_clk);
+		end
+	endtask
+
+	// This task's purpose is to write data to the cache from the datapath, the state should transition to 
+	// modified (MSI protocol)
+	task write_to_cache1(
+		input logic[25:0] tag,
+		input logic[2:0] idx,
+		input logic blk_off,
+		input logic[1:0] byte_off,
+		input word_t data
+		);
+		begin
+		@(negedge tb_clk);
+		dif1.dmemaddr = {tag,idx, blk_off, byte_off};
+		dif1.dmemWEN = 1;
+		dif1.dmemREN = 0;
+		tbcif1.dstore = data;
+		@(posedge tb_clk);
+		end
+	endtask
+
+	// This task is similar to the previous one with the difference being that this one works with the second
+	// cache.
+	task write_to_cache2(
+		input logic[25:0] tag,
+		input logic[2:0] idx,
+		input logic blk_off,
+		input logic[1:0] byte_off,
+		input word_t data
+		);
+		begin
+		@(negedge tb_clk);
+		dif2.dmemaddr = {tag,idx, blk_off, byte_off};
+		dif2.dmemWEN = 1;
+		dif2.dmemREN = 0;
+		tbcif2.dstore = data;
+		@(posedge tb_clk);
+		end
+	endtask
+
+	// Wait for 1 cycle, old news, been done before
+	task wait1 ();
+	    begin
+		@(posedge tb_clk);
+	    end
+	endtask
+
+	// Wait for 5 cycles
+	task wait5 ();
+		begin
+		@(posedge tb_clk);
+		@(posedge tb_clk);
+		@(posedge tb_clk);
+		@(posedge tb_clk);
+		@(posedge tb_clk);
+		end
+	endtask
+
+	// 10 cycles obviously
+	task wait10 ();
+		begin
+			wait5();
+			wait5();
+		end
+	endtask
+
+    //Predefined tasks
+    //Taken from system testbench provided for single-cycle
+    task automatic dump_memory();
+      string filename = "memcpu.hex";
+      int memfd;
+
+      //syif.tbCTRL = 1; // I think that tbCTRL is not needed
+      //tbccif.dstore = 0;
+      //tbccif.dWEN = 0;
+      //tbccif.dREN = 0;
+
+      memfd = $fopen(filename,"w");
+      if (memfd)
+        $display("Starting memory dump.");
+      else
+        begin $display("Failed to open %s.",filename); $finish; end
+
+      for (int unsigned i = 0; memfd && i < 16384; i++)
+      begin
+        int chksum = 0;
+        bit [7:0][7:0] values;
+        string ihex;
+
+        tbcif1.daddr = i << 2;
+        tbcif1.dREN = 1;
+        repeat (4) @(posedge tb_clk);
+        if (tbccif.ramstore === 0)
+          continue;
+        values = {8'h04,16'(i),8'h00,tbccif.ramstore}; //originally .ramstore, tried .dstore
+        foreach (values[j])
+          chksum += values[j];
+        chksum = 16'h100 - chksum;
+        ihex = $sformatf(":04%h00%h%h",16'(i),tbccif.ramstore,8'(chksum));
+        $fdisplay(memfd,"%s",ihex.toupper());
+      end //for
+      if (memfd)
+      begin
+        //syif.tbCTRL = 0;
+        tbcif1.dREN = 0;
+        $fdisplay(memfd,":00000001FF");
+        $fclose(memfd);
+        $display("Finished memory dump.");
+      end
+    endtask
 
 endmodule // dcache_tb
