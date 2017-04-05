@@ -153,6 +153,7 @@ always_comb begin
 	//Way 1
 	if ((dcache.tag == dsets[dcache.idx].way1.tag) && dsets[dcache.idx].way1.valid) begin
 		//If the tag matches and data is valid, must be one blocq or other
+		dcif.dmemload = dsets[0].way1.word1;
 		if (dcache.blkoff == 0) begin
 			dcif.dmemload = dsets[dcache.idx].way1.word1;
 		end else begin
@@ -161,10 +162,11 @@ always_comb begin
 	//Way 2
 	end else if ((dcache.tag == dsets[dcache.idx].way2.tag) && dsets[dcache.idx].way2.valid) begin
 		//If the tag matches and data is valid, must be one blocq or other
+		dcif.dmemload = dsets[0].way2.word1;
 		if (dcache.blkoff == 0) begin
-			dcif.dmemload = dsets[i].way2.word1;
+			dcif.dmemload = dsets[dcache.idx].way2.word1;
 		end else begin
-			dcif.dmemload = dsets[i].way2.word2;
+			dcif.dmemload = dsets[dcache.idx].way2.word2;
 		end
 	end
 end
@@ -179,7 +181,7 @@ end
 always_ff @(posedge CLK, negedge nRST) begin
 	if (nRST == 0) begin
 		hit_count <= 0;
-	end else if (dhit) begin
+	end else if (dhit && !dcif.halt) begin
 		hit_count <= hit_count + 1;
 	end else begin
 		hit_count <= hit_count;
@@ -542,7 +544,7 @@ always_comb begin
 		if (next_dirty[0] == 0) begin
 			//Select Way 1
 			mem_addr = {dsets[next_dirty[3:1]].way1.tag, next_dirty[3:1], word_sel, 2'b00};
-		end else if (next_dirty[1] == 1) begin
+		end else if (next_dirty[0] == 1) begin
 			//Select Way 2
 			mem_addr = {dsets[next_dirty[3:1]].way2.tag, next_dirty[3:1], word_sel, 2'b00};
 		end
