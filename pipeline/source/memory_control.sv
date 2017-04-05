@@ -115,7 +115,7 @@ end
 
 //iwait
 always_comb begin
-  ccif.iwait = 1;
+  ccif.iwait = 0;
   if ((ccif.dREN == 1) || (ccif.dWEN == 1)) begin
     if (ccif.iREN == 1) begin
       ccif.iwait = 1;

@@ -20,6 +20,7 @@ begin
     eif.resultOUT <= 0;
     eif.rwOUT <= 0;
     eif.busBOUT <= 0;
+    eid.InstructionOUT <= 0;
   end else if (eif.flush) begin
     eif.PCIncOUT <= 0;
     eif.writeRegOUT <= 0;
@@ -32,6 +33,7 @@ begin
     eif.resultOUT <= 0;
     eif.rwOUT <= 0;
     eif.busBOUT <= 0;
+    eid.InstructionOUT <= 0;
   end else if (eif.enable) begin
     eif.PCIncOUT <= eif.PCIncIN;
     eif.writeRegOUT <= eif.writeRegIN;
@@ -44,6 +46,7 @@ begin
     eif.resultOUT <= eif.resultIN;
     eif.rwOUT <= eif.rwIN;
     eif.busBOUT <= eif.busBIN;
+    eid.InstructionOUT <= eid.InstructionIN;
   end else begin
     eif.PCIncOUT <= eif.PCIncOUT;
     eif.writeRegOUT <= eif.writeRegOUT;
@@ -56,6 +59,7 @@ begin
     eif.resultOUT <= eif.resultOUT;
     eif.rwOUT <= eif.rwOUT;
     eif.busBOUT <= eif.busBOUT;
+    eid.InstructionOUT <= eid.InstructionOUT;
   end
 end
 
