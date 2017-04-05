@@ -296,6 +296,8 @@ always_comb begin
           nextstate = CTC1;
         end else if (ccif.ccwrite[servicing]) begin
           nextstate = MEM1;
+        end else begin
+          nextstate = IDLE;
         end
         end
     CTC1: begin
