@@ -14,6 +14,21 @@
   Modified for Pipeline
 */
 
+/*
+Current issues/symptoms for dcache:
+
+With RAM latency 0: 
+-some values are wrong
+-Last line is not written, how to check the address again?
+
+
+With RAM latency 1:
+-one value written wrong
+-MANY data values missing -> bad state machine/timing likely
+*/
+
+
+
 // data path interface
 `include "datapath_cache_if.vh"
 `include "mem_if.vh"
@@ -75,6 +90,10 @@ module datapath (
   word_t dataout;
   word_t RegWDat;
   word_t branchaddr;
+
+  //logic stall_for_cache; //previously "pipestall";
+  logic normal_op;
+  logic bubble;
 
   //    Register file interface
   register_file_if rfif1 ();
@@ -150,7 +169,11 @@ module datapath (
       //What to do here? reset to 0 for now
       PC <= 0;
     end else if (PCEn == 1) begin
-      PC <= PCNxt;
+      if (normal_op) begin
+        PC <= PCNxt;
+      end else begin
+        PC <= PC;
+      end
     end else begin
       PC <= PC;
     end
@@ -171,7 +194,7 @@ module datapath (
       2'b01:  begin
                 PCNxt = branchaddr;
               end
-          //Branch (addr?) logic handled in Exec stage now
+          //Branch logic handled in Exec stage now
                /* if(branch == 1) begin
                   //PCNxt = (Ext_dat << 2) + PCInc;
             PCNxt = BranchAddr;
@@ -280,6 +303,7 @@ module datapath (
   assign exif.dRENIN = deif.dRENOUT;
   assign exif.opcodeIN = deif.opcodeOUT;
   assign exif.resultIN = result;
+  assign exif.InstructionIN = deif.InstructionOUT;
 
 	//assign exif.busBIN = deif.busBOUT;
 	//MUX to select data store value
@@ -394,11 +418,21 @@ module datapath (
   assign mmif.resultIN = exif.resultOUT;
   assign mmif.rwIN = exif.rwOUT;
   assign mmif.dmemloadIN = dpif.dmemload;
+  assign mmif.InstructionIN = exif.InstructionOUT;
 
 
   //outputs (not to next pipe register)
-  assign dpif.dmemstore = exif.busBOUT;
-  assign dpif.dmemaddr = exif.resultOUT;
+  always_comb begin
+    if (exif.dWENOUT || exif.dRENOUT) begin
+      dpif.dmemstore = exif.busBOUT;
+      dpif.dmemaddr = exif.resultOUT;
+    end else begin
+      //Helps avoid hits (hopefully since this should be instruction space) when 
+      //there isn't a memory request
+      dpif.dmemstore = 0;
+      dpif.dmemaddr = 0;
+    end
+  end
 
   ////////////////////////
   /*  Write Back STAGE	*/
@@ -461,25 +495,65 @@ module datapath (
   ////////////////////////////////////////////////
   /*  ihit    dhit    action
         0       0       stall pipe
-        0       1       insert bubble -> similar to inserting bubble in memory earlier. Can either bubble 
-        1       0       stall pipe -> Should only matter if requesting both, ihit always requested though
+        0       1       insert bubble -> same as inserting bubble in memory earlier
+        1       0       stall pipe
         1       1       move pipe forward -> let everything progress as normal
   */
-  logic pipestall;
 
-  //Really just stall the pipe on !dhit -> BUT ONLY IF WE WANT DATA
-  assign pipestall = (!dhit && (exif.dWENOUT || exif.dRENOUT));
-  //assign bubble = !ihit && !pipestall;
+  /*
+    Note on bubble: remember the only reason that this stage was flushed was in order to
+    clear the assertion to memory so that a request instruction could be processed. Should
+    be fine to move on dhit and ihit. 
+  */
+
+
+
+  //!ihit && imemREN??
+
+  //Normal move
+  assign normal_op = ihit && (dhit || (!dhit && !(exif.dWENOUT || exif.dRENOUT)));
+
+  //When to bubble
+  assign bubble = !ihit && (dhit && (exif.dWENOUT ||exif.dRENOUT)); 
+
+
+  assign feif.flush = huif.fetch_flush && normal_op; //Flushed for branches
+  assign feif.enable = !huif.fetch_stall && normal_op; //Only used
+ 
+  assign deif.flush = huif.decode_flush && normal_op; //Flushed for branches
+  assign deif.enable = !huif.decode_stall && normal_op; //Used for several hazards, including Load-use
+ 
+  assign exif.flush = huif.execute_flush && (bubble); //Used for dhits, bubbling
+  assign exif.enable = !huif.execute_stall && normal_op; //(ihit | dhit);
+
+  assign mmif.flush = huif.memory_flush && normal_op; //Not used
+  assign mmif.enable = !huif.memory_stall && (normal_op || bubble);
+
+  //Don
   
-  //For caches
-  assign feif.flush = huif.fetch_flush && ihit; //|| (bubble); //(ihit | dhit);
-  assign feif.enable = !huif.fetch_stall && !pipestall && ihit;
-  assign deif.flush = huif.decode_flush && ihit;
-  assign deif.enable = !huif.decode_stall && ihit && !pipestall; //(ihit | dhit);
-  assign exif.flush = huif.execute_flush && (ihit || dhit);
-  assign exif.enable = !huif.execute_stall && (ihit || dhit) && !pipestall; //(ihit | dhit);
-  assign mmif.flush = huif.memory_flush; // & ihit;
-  assign mmif.enable = !huif.memory_stall && !pipestall;
+  //Must tie pipestall to all signals, because even if it normally wouldn't matter to flush, we
+  //already know it should work if we only flush when it moves forward (as with ihit before)
+
+  //For caches, try 1
+  /*
+  //Really just stall the pipe on !dhit -> BUT ONLY IF WE WANT DATA
+
+  //assign stall_for_cache = !(ihit && dhit) && (!ihit && (!dhit && (exif.dWENOUT || exif.dRENOUT))) || (ihit && (!dhit && (exif.dWENOUT || exif.dRENOUT))); //ihit || !ihit implied
+  //assign bubble = !ihit && (dhit && (exif.dWENOUT || exif.dRENOUT)); //Got data, don't have instruction yet
+
+  assign feif.flush = huif.fetch_flush && !stall_for_cache; //Flushed for branches
+  assign feif.enable = !huif.fetch_stall && !stall_for_cache && !bubble && ihit; //Only used
+ 
+  assign deif.flush = huif.decode_flush && !stall_for_cache; //Flushed for branches
+  assign deif.enable = !huif.decode_stall && !stall_for_cache && !bubble && ihit; //Used for several hazards, including Load-use
+ 
+  assign exif.flush = huif.execute_flush && !stall_for_cache && (bubble); //Used for dhits, bubbling
+  assign exif.enable = !huif.execute_stall && !stall_for_cache && !bubble && ihit; //(ihit | dhit);
+
+  assign mmif.flush = huif.memory_flush && !stall_for_cache; //Not used
+  assign mmif.enable = !huif.memory_stall && !stall_for_cache && (ihit || bubble);
+*/
+//
 
 /*  Pipeline version signals
   assign feif.flush = huif.fetch_flush & ihit; //(ihit | dhit);
@@ -523,12 +597,14 @@ module datapath (
   */
 
   // Select when PC is on
-  assign PCEn = !dpif.dhit & dpif.ihit & !huif.PCStall;//Need to add & !HazardStall
+  assign PCEn = normal_op & !huif.PCStall;
+  //Pipeline PCEn
+  //assign PCEn = !dpif.dhit & dpif.ihit & !huif.PCStall;//Need to add & !HazardStall
 
 
   //This should be fine since clocked to mmif Reg now
   always_comb begin
-		if(mmif.opcodeIN == HALT) begin
+		if(mmif.opcodeOUT == HALT) begin
 			dpif.halt = 1;
       //halt = 1;
         end else begin
@@ -536,12 +612,28 @@ module datapath (
       //halt = 0;
 		end
   end
+/*
+  always_ff @(posedge CLK, negedge nRST) begin
+    if(nRST == 0) begin
+      dpif.halt <= 0;
+    end else begin
+      dpif.halt <= halt;
+    end
+  end
+*/
+
+  //Request as long as not halted
+  //assign dpif.imemREN = ireadreq && !(dhit && ihit);
+  always_comb begin
+      dpif.imemREN = ireadreq;
+  end
 
 
   assign ireadreq = !dpif.halt;
 
   //"Borrowed" and modified from Request Unit
   //this should work properly since halt is clocked based on mmif opcode
+  /*
   always_ff @(posedge CLK, negedge nRST) begin
     if(nRST == 0) begin
       dpif.imemREN <= 0;
@@ -551,7 +643,9 @@ module datapath (
     end else begin
       dpif.imemREN <= ireadreq;
     end
-  end
+  end*/
+
+
 
   //assign dpif.imemREN = iREN; //Need to generate this elsewhere now
   assign dpif.dmemREN = exif.dRENOUT;
