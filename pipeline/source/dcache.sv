@@ -357,7 +357,7 @@ end
 
 always_comb begin
 	clean = '0;
-	if (state == WBD2) begin
+	if (state == WBD2 && !cif.dwait) begin
 		clean[next_dirty] = 1;
 	end
 end
