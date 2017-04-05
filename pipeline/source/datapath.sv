@@ -523,7 +523,7 @@ module datapath (
   assign deif.flush = huif.decode_flush && normal_op; //Flushed for branches
   assign deif.enable = !huif.decode_stall && normal_op; //Used for several hazards, including Load-use
  
-  assign exif.flush = huif.execute_flush && (normal_op || bubble); //Used for dhits, bubbling
+  assign exif.flush = huif.execute_flush && (bubble); //Used for dhits, bubbling
   assign exif.enable = !huif.execute_stall && normal_op; //(ihit | dhit);
 
   assign mmif.flush = huif.memory_flush && normal_op; //Not used
@@ -597,7 +597,9 @@ module datapath (
   */
 
   // Select when PC is on
-  assign PCEn = !dpif.dhit & dpif.ihit & !huif.PCStall;//Need to add & !HazardStall
+  assign PCEn = normal_op & !huif.PCStall;
+  //Pipeline PCEn
+  //assign PCEn = !dpif.dhit & dpif.ihit & !huif.PCStall;//Need to add & !HazardStall
 
 
   //This should be fine since clocked to mmif Reg now

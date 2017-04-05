@@ -1,7 +1,7 @@
 
   #------------------------------------------------------------------
   # R-type Instruction (ALU) Test Program
-  #------------------------------------------------------------------
+  #--- ---------------------------------------------------------------
 
   org 0x0000
   ori   $1,$zero,0xD269
@@ -11,8 +11,8 @@
   ori   $22,$zero,0xF0
 
 # Now running all R type instructions
-  or    $3,$1,$2
-  and   $4,$1,$2
+  or    $3,$1,$2    #Result: 0000F7F9
+  and   $4,$1,$2    #Result: 00001261
   andi  $5,$1,0xF
   addu  $6,$1,$2
   addiu $7,$3,0x8740
@@ -23,7 +23,7 @@
   srl   $12,$1,5
   nor   $13,$1,$2
 # Store them to verify the results
-  sw    $13,0($22)
+  sw    $13,0($22)  #11 Stores, all differenct addresses
   sw    $3,0($21)
   sw    $4,4($21)
   sw    $5,8($21)

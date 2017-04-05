@@ -5,19 +5,19 @@
   ori   $1, $zero, 0xBA5C
   ori   $2, $zero, 0x0080
   ori   $15, $zero, jmpR
-  beq   $zero, $zero, braZ
+  beq   $zero, $zero, braZ    #Take
   sw    $1, 0($2)
 braZ:
-  jal   braR
+  jal   braR                  #Take
   sw    $1, 4($2)
 end:
   sw    $ra, 16($2)
   HALT
-braR:
+braR:                          
   or    $3, $zero, $ra
   sw    $ra, 8($2)
-  jal   jmpR
+  jal   jmpR                  #Take
   sw    $1, 12($2)
 jmpR:
-  bne   $ra, $3, end
+  bne   $ra, $3, end          #What is RA? this will determine a lot
   halt
