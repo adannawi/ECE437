@@ -38,30 +38,6 @@ module dcache (
     	FLUSHED    	= 4'b1011
 	} Statetype;
 
-
-///////////////MSI CACHE SIDE///////////////
-/*
-Upgrade dcache to handle snooping
-Must jump to snoop handling states
-Do not need to react in th emiddle of load/store,
-Else must be able to grab snoop
-Make sure that snoop states almost entirely operate from cc signals
-Work on snop handling states first
-
-Need 3-4 states to handle left side of MSI
-->handle misses essentially
-->must we well coordinated with state machine in coherence, other dcache
-->handle from ccsignals
-->dwait can just be used to know when done reading/writing
-
-
-Can remove hit count logic, doesn't matter
-
-Coordinate states between coherence and dcache for debug
-*/
-
-
-
 	//Local Variables
 
 	//	States for cache function
@@ -75,9 +51,9 @@ Coordinate states between coherence and dcache for debug
 	logic miss;
 
 	//Counts
-	word_t count;
 	word_t miss_count;
 	word_t hit_count;
+	logic [31:0] count;
 	word_t block_data;
 	logic writecounter;
 
@@ -90,7 +66,7 @@ Coordinate states between coherence and dcache for debug
 	//Memory Address to write cache data to when needed
 	logic [31:0] mem_addr;
 
-	//Indicates which index the write data is coming form for mem write
+	//Indicates which index the write data is coming from for mem write
 	logic [2:0] data_idx;
 
 	//Indicates which way for the index the data is selected
@@ -106,6 +82,7 @@ Coordinate states between coherence and dcache for debug
 	//Indicates next dirty data to write back
 	logic [3:0] next_dirty;
 	logic some_dirty;
+
 
 
     //   26 bits tag | 3 bits idx | 1 bit block offset | 2 bits of byte offset (4 bytes/32 bits)
@@ -129,11 +106,38 @@ Coordinate states between coherence and dcache for debug
   //        ccwrite, cctrans
   //);
 
+/////////////////////////////////////////////////////////////
+//					Coherence Signals
+/////////////////////////////////////////////////////////////
+//Dat coherence tho
+
+//assign ccif.write = 0;
+//assign ccif.trans = 0;
+
+
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+
 assign dcache = dcachef_t'(dcif.dmemaddr);
 //Very close to the logic for dmemload setting
-assign dcif.dhit = (state == IDLE) && (dcif.dmemWEN || dcif.dmemREN) && ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) || ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1));
+//assign dcif.dhit = (state == IDLE) && (next_state == IDLE) && (dcif.dmemWEN || dcif.dmemREN) && ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) || ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1));
+//assign dcif.dhit = (state == IDLE) && (next_state == IDLE) && (dcif.dmemWEN || dcif.dmemREN) && (((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) || ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1)));
 assign dhit = dcif.dhit; //Purely to make it easier to reference
 
+always_comb begin
+	dcif.dhit = 0;
+	if ((state == IDLE) && (dcif.dmemWEN || dcif.dmemREN)) begin
+		//Match to way 1 at given IDX
+		if ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) begin
+			dcif.dhit = 1;
+
+		//Match to way 2 at given IDX
+		end else if ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1)) begin
+			dcif.dhit = 1;
+
+		end
+	end
+end
 
 
 /////////////////////////////////////////////////////////////
@@ -211,7 +215,7 @@ always_comb begin
 	if (writecounter) begin
 		cif.daddr = 32'h00003100;
 	end else begin
-		//Change to select from cache based on data idx/data way values
+		//Change to select from cache based on data idx/data way values for a read/write
 		cif.daddr = mem_addr;
 	end // end else
 end
@@ -369,6 +373,8 @@ end
 //Does tag comparision to find the match
 //Similar to the hit logic, but separate for clarity's sake
 
+//This selects JUST the WAY, not the WORD
+
 always_comb begin
 	//Default to no writes, safe practice, easier to catch
 	cWEN = '0;
@@ -439,7 +445,7 @@ end
 //Notably this can be used to index the WEN desired to be set
 //by adding LRU to i*2 which will be useful for block replacement
 always_ff @(posedge CLK, negedge nRST) begin
-
+	lru <= lru;
 	if (!nRST) begin 
 		lru <= '0;
 
@@ -447,9 +453,12 @@ always_ff @(posedge CLK, negedge nRST) begin
 	//  Values for LRU:
 	//  way1 -> 0, way2 -> 1
 	//  e.g. if LRU[i] = 1, way 2 is LRU and should be replaced
+
+	//Set LRU on hit for write
 	end else if (dcif.dmemWEN && (state == IDLE) && dhit) begin
 		//Iterate through to find whatever is being written
 
+		//Check current index, way 1
 		if (cWEN[{dcache.idx,1'b0}]) begin
 				//This should work in any case for a write, because
 				//if a block is fetched from memory then it will be 
@@ -460,9 +469,11 @@ always_ff @(posedge CLK, negedge nRST) begin
 				// Can be set to whichever way is not set 
 			lru[dcache.idx] <= 1;
 
+		//Check current index, way 2
 		end else if  (cWEN[{dcache.idx,1'b1}]) begin
 			lru[dcache.idx] <= 0;
 
+		//Else maintain
 		end else begin
 			lru[dcache.idx] <= lru[dcache.idx];
 
@@ -512,17 +523,22 @@ end
 /////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////
-//				 Mem. Write Destination Logic
+//			  Mem. Write/Read Destination Logic
 /////////////////////////////////////////////////////////////
 
 //Selects the location that memory will be written to
 always_comb begin
+	//Defaults
 	mem_addr = 32'hECE43700; //Error value, this should never be hit
 	data_way = 0;
+	data_idx = 0;
+
+	//For WRITING back DIRTY bits
 	if ((state == WBD1) || (state == WBD2)) begin
 		//Select based off of next_dirty
 		data_way = next_dirty[0];
 		data_idx = next_dirty[3:1];
+
 		if (next_dirty[0] == 0) begin
 			//Select Way 1
 			mem_addr = {dsets[next_dirty[3:1]].way1.tag, next_dirty[3:1], word_sel, 2'b00};
@@ -531,10 +547,13 @@ always_comb begin
 			mem_addr = {dsets[next_dirty[3:1]].way2.tag, next_dirty[3:1], word_sel, 2'b00};
 		end
 
-	end else begin
-		//Select based off of current data trying to be written and LRU
+		//Address to write data ALREADY IN CACHE back to
+	end else if ((state == WB1) || (state == WB2)) begin
+		//Select based off of current data trying to be READ or WRITTEN and LRU
 		data_way = lru[dcache.idx];
 		data_idx = dcache.idx;
+
+		//This needs to pay attention to LRU to verify writeback to correct address
 		if (lru[dcache.idx] == 0) begin
 			//Select Way 1
 			mem_addr = {dsets[dcache.idx].way1.tag, dcache.idx, word_sel, 2'b00};
@@ -544,6 +563,11 @@ always_comb begin
 			mem_addr = {dsets[dcache.idx].way2.tag, dcache.idx, word_sel, 2'b00};
 		end
 
+		//Address to read from for FRESH DATA -> where to put it selected elsewhere
+	//end else if ((state == FD1) || (state == FD2)) begin
+	end else begin 
+		//Default to read
+		mem_addr = {dcache.tag, dcache.idx, word_sel, 2'b00};
 	end
 
 end
@@ -854,7 +878,6 @@ end
 		endcase
 	end // always_comb
 
-			
 
 	//State Register
 	always_ff @(posedge CLK,negedge nRST) begin
