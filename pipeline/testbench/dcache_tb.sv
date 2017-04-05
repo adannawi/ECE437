@@ -30,7 +30,7 @@ module dcache_tb;
 	assign tbccif.ramstate = tbrif.ramstate;
 
 	// Map the DCache - Fix this to support multicore
-	dcache DUT (
+	/*dcache DUT (
 		.CLK(tb_clk),
 		.nRST(tb_nRST),
 		.dcif(dif1),
@@ -43,9 +43,23 @@ module dcache_tb;
 		.dcif(dif2),
 		.cif(tbcif2)
 	);
+	*/
+	caches CACHES1 (
+		.CLK(tb_clk),
+		.nRST(tb_nRST),
+		.dcif(dif1),
+		.cif(tbcif1)
+	);
+
+	caches CACHES2 (
+		.CLK(tb_clk),
+		.nRST(tb_nRST),
+		.dcif(dif2),
+		.cif(tbcif2)
+	);
 
 	// Map the RAM
-	ram dat_ram(
+	ram RAM(
 		.CLK(tb_clk),
 		.nRST(tb_nRST),
 		.ramif(tbrif)
@@ -77,7 +91,9 @@ initial begin
 	// Have the testbench act as the two datapaths while using 
 	// real memory controller (w/ coherence) and real ram
 	// for maximum testing (ideally)
-
+	wait1();
+	init_vals();
+	wait1();
 	testcase = 0;
 	wait1();
 	tb_nRST = 0;
@@ -88,7 +104,8 @@ initial begin
 	// Preliminary Test 0:
 	// Populate all cache entries to see if they work correctly
 	testcase++;
-	populate_cache1();
+	//populate_cache1();
+	write_to_cache1_modular(26'h0000, 5, 0, 0, 32'h10101010);
 	wait10();
 
 	// This should reset the caches?
@@ -102,23 +119,26 @@ initial begin
 	////// Test Case 1: Check for snoop miss & read from memory ///////
 	// Intended behavior to load index 0, tag 000F with 00001111
 	testcase++;
-	load_cache1(26'h0000, 0, 0, 0, 32'h00001111); 
+	load_cache1(32'h00000000,32'h00001111); 
 	wait5();
 
 	// Intended behavior to load index 0, tag 000F with 00001111, but for cache 2
-	load_cache2(26'h000F, 0, 0, 0, 32'h00001111);
+	//load_cache2(26'h000F, 0, 0, 0, 32'h00001111);
+	load_cache2(32'h00000000, 32'h00001111);
 	wait5();
 
-	// Store to cache 1 from datapath 1, should be in modified state now
-	write_to_cache2(26'h00FF, 1, 0, 0, 32'h11110000);
+	// Store to cache 2 from datapath 2, should be in modified state now
+	//write_to_cache2(26'h00FF, 1, 0, 0, 32'h11110000);
+	write_to_cache2(32'h00000001, 32'h00001111);
 	wait5();
 
 
 
-	/////// Test Case 2: Check for cache to cache transfer ///////
+	/////// Test Case 2: Check for cache to cache transfer /////// (BusRD as well)
 	// This should conduct a cache to cache transfer I think (and go to shared)
 	testcase++;
-	load_cache1(26'h00FF, 1, 0, 0, 32'h01010000);
+	//load_cache1(26'h00FF, 1, 0, 0, 32'h01010000);
+	load_cache1(32'h00000001, 32'hDEADBEEF);
 	wait5();
 
 
@@ -126,26 +146,58 @@ initial begin
 	/////// Test Case 3: Check for invalidation on write ///////
 	// I think this is a BusRdX on shared, cache 2 should go to invalid
 	testcase++;
-	write_to_cache1(26'h00FF, 1, 0, 0, 32'h0000F00D);
+	//write_to_cache1(26'h00FF, 1, 0, 0, 32'h0000F00D);
+	write_to_cache1(32'h00000001, 32'hBEEF0000);
 	wait5();
+
 
 
 	// If this doesn't work, may have to check if way is being set as intended (and modify testbench)
 	/////// Test Case 4: Check if eviction happens ///////
 	testcase++;
-	write_to_cache1(26'h0001, 1, 0, 0, 32'h0B4DF00D);
+	//write_to_cache1(26'h0001, 1, 0, 0, 32'h0B4DF00D);
+	load_cache1_modular(26'h0001, 0, 0, 0, 32'h0B4DF00D);
 	wait5();
+	write_to_cache1_modular(26'h0001, 0, 0, 0, 32'hDEADF00D);
+	wait10();
+
+	dif1.halt = 1;
+	dif2.halt = 1;
 
 end
 
 	// This is a dinky function to test and see if the cache
 	// populates right, this may or may not work.
+	task init_vals();
+		begin
+		@(negedge tb_clk);
+			dif1.halt = 0;
+			dif1.imemREN = 0;
+			dif1.dmemREN = 0;
+			dif1.dmemWEN = 0;
+			dif1.datomic = 0;
+			dif1.dmemstore = 0;
+			dif1.dmemaddr = 0;
+			dif1.imemaddr = 0;
+
+			dif2.halt = 0;
+			dif2.imemREN = 0;
+			dif2.dmemREN = 0;
+			dif2.dmemWEN = 0;
+			dif2.datomic = 0;
+			dif2.dmemstore = 0;
+			dif2.dmemaddr = 0;
+			dif2.imemaddr = 0;
+		@(posedge tb_clk);
+		end
+	endtask
 
 	task populate_cache1();
 		begin
 		int lcv;
 		for (lcv = 0; lcv < 16; lcv++) begin
-			load_cache1(lcv*2, lcv%8, 0, 0, 32'h0420F00D);
+			//load_cache1(lcv*2, lcv%8, 0, 0, 32'h0420F00D);
+			write_to_cache1_modular(lcv*2, lcv%8, 0, 0, 32'h4200F00D);
 		end
 	end
 	endtask
@@ -153,6 +205,24 @@ end
 	// This task's purpose is to get data from the cache, and it should go to RAM if the data
 	// does not exist. Snooping will be conducted, and on a miss it will go to RAM.
 	task load_cache1(
+		//input logic[25:0] tag,
+		//input logic[2:0] idx,
+		//input logic blk_off,
+		//input logic[1:0] byte_off,
+		input word_t addr,
+		input word_t data
+		);
+		begin
+		@(negedge tb_clk);
+		dif1.dmemaddr = addr; //{tag, idx, blk_off, byte_off};
+		dif1.dmemREN = 1;
+		dif1.dmemWEN = 0;
+		tbcif1.dload = data;
+		@(posedge tb_clk);
+		end
+	endtask
+
+	task load_cache1_modular(
 		input logic[25:0] tag,
 		input logic[2:0] idx,
 		input logic blk_off,
@@ -173,15 +243,16 @@ end
 	// does not exist. Snooping will be conducted, and on a miss it will go to RAM.
 	// Difference is that this is for the second cache.
 	task load_cache2(
-		input logic[25:0] tag,
-		input logic[2:0] idx,
-		input logic blk_off,
-		input logic[1:0] byte_off,
+		//input logic[25:0] tag,
+		//input logic[2:0] idx,
+		//input logic blk_off,
+		//input logic[1:0] byte_off,
+		input word_t addr,
 		input word_t data
 		);
 		begin
 		@(negedge tb_clk);
-		dif2.dmemaddr = {tag, idx, blk_off, byte_off};
+		dif2.dmemaddr = addr; //{tag, idx, blk_off, byte_off};
 		dif2.dmemREN = 1;
 		dif2.dmemWEN = 0;
 		tbcif2.dload = data;
@@ -192,6 +263,25 @@ end
 	// This task's purpose is to write data to the cache from the datapath, the state should transition to 
 	// modified (MSI protocol)
 	task write_to_cache1(
+		//input logic[25:0] tag,
+		//input logic[2:0] idx,
+		//input logic blk_off,
+		//input logic[1:0] byte_off,
+		input word_t addr,
+		input word_t data
+		);
+		begin
+		@(negedge tb_clk);
+		dif1.dmemaddr = addr; //{tag,idx, blk_off, byte_off};
+		dif1.dmemWEN = 1;
+		dif1.dmemREN = 0;
+		tbcif1.dstore = data;
+		@(posedge tb_clk);
+		end
+	endtask
+
+	// Modular version of the above task
+	task write_to_cache1_modular(
 		input logic[25:0] tag,
 		input logic[2:0] idx,
 		input logic blk_off,
@@ -211,15 +301,16 @@ end
 	// This task is similar to the previous one with the difference being that this one works with the second
 	// cache.
 	task write_to_cache2(
-		input logic[25:0] tag,
-		input logic[2:0] idx,
-		input logic blk_off,
-		input logic[1:0] byte_off,
+		//input logic[25:0] tag,
+		//input logic[2:0] idx,
+		//input logic blk_off,
+		//input logic[1:0] byte_off,
+		input word_t addr,
 		input word_t data
 		);
 		begin
 		@(negedge tb_clk);
-		dif2.dmemaddr = {tag,idx, blk_off, byte_off};
+		dif2.dmemaddr = addr; //{tag,idx, blk_off, byte_off};
 		dif2.dmemWEN = 1;
 		dif2.dmemREN = 0;
 		tbcif2.dstore = data;
