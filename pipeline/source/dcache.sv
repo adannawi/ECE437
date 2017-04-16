@@ -33,9 +33,12 @@ module dcache (
     	WBD1     	= 4'b0110,
     	WBD2     	= 4'b0111,
     	DCHK     	= 4'b1000,
-    	INVAL    	= 4'b1001, //Extra, not needed anymore
-    	WRCNT     	= 4'b1010,
-    	FLUSHED    	= 4'b1011
+    	INVAL    	= 4'b1001, 
+    	//WRCNT     	= 4'b1010,
+    	SNPD		= 4'b1010,
+    	SNPWB1		= 4'b1011,
+    	SNPWB2 		= 4'b1100,
+    	FLUSHED    	= 4'b1101
 	} Statetype;
 
 	//Local Variables
@@ -50,12 +53,7 @@ module dcache (
 	integer i;
 	logic miss;
 
-	//Counts
-	word_t miss_count;
-	word_t hit_count;
-	logic [31:0] count;
 	word_t block_data;
-	logic writecounter;
 
 	// State Machine Output variables
 	logic [15:0] clean; //Resets to dirty bits on read from mem
@@ -82,6 +80,10 @@ module dcache (
 	//Indicates next dirty data to write back
 	logic [3:0] next_dirty;
 	logic some_dirty;
+
+	//Coherence
+	logic modified; //Indicates if whatever data currently being observed is modified
+	logic invalid; //Indicates if whatever data currently being observed is invalid
 
 
 
@@ -113,32 +115,98 @@ module dcache (
 
 //assign ccif.write = 0;
 //assign ccif.trans = 0;
+always_comb begin
+	//Assert cctrans if its needed to indicate a wb
+	if (dhit && modified && cif.ccwait) begin
+		cif.cctrans = 1;
+
+	//Else the other processor can get stuff from memory
+	end else begin
+		cif.cctrans = 0;
+	end
+end
 
 
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
 
-assign dcache = dcachef_t'(dcif.dmemaddr);
+/*	IMPORTANT COHERENCE NOTES
+	It is VERY important that dhit is not asserted to the processor by the cache when coherence states are asserted
+
+	What happens if we snoop an address EXACTLY as the processor goes into IDLE state? would that mean that the processor would take the new value as 
+	it could be modified for snoop? Need to de-assert dhit in that case
+*/
+always_comb begin
+	if (cc) begin
+		dcache = dcachef_t'(cif.ccsnoopaddr)
+	end else begin
+		dcache = dcachef_t'(dcif.dmemaddr);
+	end
+end
+
+
 //Very close to the logic for dmemload setting
 //assign dcif.dhit = (state == IDLE) && (next_state == IDLE) && (dcif.dmemWEN || dcif.dmemREN) && ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) || ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1));
 //assign dcif.dhit = (state == IDLE) && (next_state == IDLE) && (dcif.dmemWEN || dcif.dmemREN) && (((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) || ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1)));
-assign dhit = dcif.dhit; //Purely to make it easier to reference
+
+//Assigning Processor's dhit for coherence
+//Mainly should ALWAYS be 0 in case of 
+always_comb begin
+	//Prevent assertion of a dhit in case of a snoop. Prevents the processor from running with an address that is being snooped by the other core
+	//This may be solved by LL/SC but this should eliminate some corner cases, if not optimize for it
+	if (cif.ccwait == 1) begin
+		dcif.dhit = 0;
+	end else if 
+		//Only really assign dhit for processor when there isn't a coherence operation
+		dcif.dhit = dhit;
+	end
+end
 
 always_comb begin
-	dcif.dhit = 0;
+	dhit = 0;
 	if ((state == IDLE) && (dcif.dmemWEN || dcif.dmemREN)) begin
 		//Match to way 1 at given IDX
 		if ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) begin
-			dcif.dhit = 1;
+			dhit = 1;
 
 		//Match to way 2 at given IDX
 		end else if ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1)) begin
-			dcif.dhit = 1;
+			dhit = 1;
+
+		end
+	//Snoop States hit matching
+	end else if ((state == SNPD) || (state == SNPWB1) || (state == SNPWB1) || (state == INVAL)) begin
+		if ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) begin
+			dhit = 1;
+
+		//Match to way 2 at given IDX
+		end else if ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1)) begin
+			dhit = 1;
 
 		end
 	end
 end
 
+//Modified & valid logic
+always_comb begin
+	//There are 3 signals here, which despite being redundant should enhance clarity
+	// modified | valid | invalid
+	//These defaults are done to imply that there is no data match if the data is both modified and invalid
+	modified = 1; 
+	invalid = 1; //Should get set whenever something is actually found
+	//Only care about tag matches
+	if (dsets[dcache.idx].way1.tag == dcache.tag) begin
+		if (dsets[dcache.idx].way1.valid) begin
+			invalid = 0;
+			modified = dsets[dcache.idx].way1.dirty;
+		end
+	end else if (dsets[dcache.idx].way2.tag == dcache.tag) begin
+		if (dsets[dcache.idx].way2.valid) begin
+			invalid = 0;
+			modified = dsets[dcache.idx].way2.dirty;
+		end
+	end
+end
 
 /////////////////////////////////////////////////////////////
 //			Logic for reading out of cache
@@ -153,6 +221,7 @@ always_comb begin
 	//Way 1
 	if ((dcache.tag == dsets[dcache.idx].way1.tag) && dsets[dcache.idx].way1.valid) begin
 		//If the tag matches and data is valid, must be one blocq or other
+		dcif.dmemload = dsets[0].way1.word1;
 		if (dcache.blkoff == 0) begin
 			dcif.dmemload = dsets[dcache.idx].way1.word1;
 		end else begin
@@ -161,10 +230,11 @@ always_comb begin
 	//Way 2
 	end else if ((dcache.tag == dsets[dcache.idx].way2.tag) && dsets[dcache.idx].way2.valid) begin
 		//If the tag matches and data is valid, must be one blocq or other
+		dcif.dmemload = dsets[0].way2.word1;
 		if (dcache.blkoff == 0) begin
-			dcif.dmemload = dsets[i].way2.word1;
+			dcif.dmemload = dsets[dcache.idx].way2.word1;
 		end else begin
-			dcif.dmemload = dsets[i].way2.word2;
+			dcif.dmemload = dsets[dcache.idx].way2.word2;
 		end
 	end
 end
@@ -172,53 +242,13 @@ end
 /////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////
-//Counters for count of original dhits
-/////////////////////////////////////////////////////////////
-
-//Hit Counter
-always_ff @(posedge CLK, negedge nRST) begin
-	if (nRST == 0) begin
-		hit_count <= 0;
-	end else if (dhit) begin
-		hit_count <= hit_count + 1;
-	end else begin
-		hit_count <= hit_count;
-	end
-end
-
-//Miss Counter
-always_ff @(posedge CLK, negedge nRST) begin
-	if (nRST == 0) begin
-		miss_count <= 0;
-	end else if (miss && (state == FD2) && (!cif.dwait)) begin
-		miss_count <= miss_count + 1;
-	end else begin
-		miss_count <= miss_count;
-	end
-end
-
-  // map datapath
-//Overall count
-assign count = hit_count - miss_count;
-assign miss = !dhit;
-
-/////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////
 //					Memory address to write to
 /////////////////////////////////////////////////////////////
-//Store value
+//This never changes now that we're doing coherence, no need 
+//to substitute to write counter
 
-always_comb begin
-	if (writecounter) begin
-		cif.daddr = 32'h00003100;
-	end else begin
-		//Change to select from cache based on data idx/data way values for a read/write
-		cif.daddr = mem_addr;
-	end // end else
-end
+assign cif.daddr = mem_addr;
+
 
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
@@ -355,8 +385,18 @@ end
 
 always_comb begin
 	clean = '0;
-	if (state == WBD2) begin
+	if (state == WBD2 && !cif.dwait) begin
 		clean[next_dirty] = 1;
+	end else if (state == INVAL) begin
+		//Setting correct clean on INVAL
+		if ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) begin
+			clean[{dcache.idx,1'b0}] = 1;
+
+		//Match to way 2 at given IDX
+		end else if ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1)) begin
+			clean[{dcache.idx,1'b1}] = 1;
+
+		end
 	end
 end
 
@@ -542,7 +582,7 @@ always_comb begin
 		if (next_dirty[0] == 0) begin
 			//Select Way 1
 			mem_addr = {dsets[next_dirty[3:1]].way1.tag, next_dirty[3:1], word_sel, 2'b00};
-		end else if (next_dirty[1] == 1) begin
+		end else if (next_dirty[0] == 1) begin
 			//Select Way 2
 			mem_addr = {dsets[next_dirty[3:1]].way2.tag, next_dirty[3:1], word_sel, 2'b00};
 		end
@@ -583,12 +623,8 @@ end
 always_comb begin
 	cif.dstore = 32'hECE43700;
 
-	//Write counter
-	if (writecounter) begin
-		cif.dstore = count;
-
 	//Write data from cache
-	end else if (data_way) begin
+	if (data_way) begin
 		if (word_sel) begin
 			cif.dstore = dsets[data_idx].way2.word2;
 		end else begin
@@ -738,11 +774,48 @@ end
 				end
 			end
 
-			//I think this is a state I put in originally that is unneeded
-			INVAL: begin
+						INVAL: begin
 				next_state = IDLE;
 			end
 
+			SNPD: begin
+				//Hit determines if its in the cache, if not must be invalid
+				//modified signal will determine whether or not the selected data is dirty
+				if (dhit && modified) begin
+					next_state = SNPWB1;
+				end else if (dhit && ccinv) begin
+					next_state = INVAL;
+				end else begin
+					next_state = IDLE;
+				end
+			end
+
+			SNPWB1: begin
+				
+				if (dwait == 0) begin
+					next_state = SNPWB2;
+
+				end else begin
+					//Default
+					next_state = SNPWB1;
+				end
+			end
+
+			SNPWB2: begin
+
+				if (dwait == 0) && (ccinv == 1) begin
+					next_state = INVAL;
+
+				end else if (dwait == 0) begin
+					nest_state = IDLE;
+
+					
+				end else begin
+					//Default
+					next_state = SNPWB1;
+				end
+			end
+			/* Obsolete for MC
 			WRCNT: begin
 				if (!cif.dwait) begin
 					next_state = FLUSHED;
@@ -750,8 +823,10 @@ end
 				//Else keep waiting
 				end else begin
 					next_state = state;
+
 				end
 			end
+			*/
 
 			default: begin
 				next_state = state;
@@ -774,8 +849,6 @@ end
 		cif.dREN = 0;
 		cif.dWEN = 0;
 		word_sel = 0;
-		//	clean = 0;
-		writecounter = 0;
 
 		casez(state)
 		
@@ -784,8 +857,6 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 0;
 				word_sel = 0;
-			//	clean = 0;
-				writecounter = 0;
 			end
 
 			WB1: begin
@@ -793,8 +864,6 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 1;
 				word_sel = 0;
-			//	clean = 0;
-				writecounter = 0;
 			end
 
 			WB2: begin
@@ -802,8 +871,6 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 1;
 				word_sel = 1;
-			//	clean = 1;
-				writecounter = 0;
 			end
 
 			FD1: begin
@@ -811,8 +878,6 @@ end
 				cif.dREN = 1;
 				cif.dWEN = 0;
 				word_sel = 0;
-			//	clean = 0;
-				writecounter = 0;
 				memtocache = 1;
 			end
 
@@ -821,8 +886,6 @@ end
 				cif.dREN = 1;
 				cif.dWEN = 0;
 				word_sel = 1;
-			//	clean = 0;
-				writecounter = 0;
 				memtocache = 1;
 			end
 
@@ -831,8 +894,6 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 0;
 				word_sel = 0;
-			//	clean = 0;
-				writecounter = 0;
 			end
 
 			WBD1: begin
@@ -840,8 +901,6 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 1;
 				word_sel = 0;
-			//	clean = 0;
-				writecounter = 0;
 			end
 
 			WBD2: begin
@@ -849,13 +908,14 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 1;
 				word_sel = 1;
-			//	clean = 1;
-				writecounter = 0;
 			end
 
 			//I think this is a state I put in originally that is unneeded
 			INVAL: begin
-				// ?
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 0;
+				word_sel = 0;
 			end
 
 			WRCNT: begin
@@ -863,18 +923,29 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 1;
 				word_sel = 0;
-			//	clean = 0;
-				writecounter = 1;
 			end
 
 			FLUSHED: begin
 				dcif.flushed = 1;
 				cif.dREN = 0;
 				cif.dWEN = 0;
-				word_sel = 0;
-			//	clean = 0;
-				writecounter = 0;
+				word_sel = 0;;
 			end // FLUSHED:
+
+			SNPWB1: begin
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 1;
+				word_sel = 0;
+			end
+
+			SNPWB2: begin
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 1;
+				word_sel = 1;
+			end
+
 		endcase
 	end // always_comb
 
