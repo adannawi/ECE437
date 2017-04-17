@@ -134,18 +134,37 @@ end
 // S -> I   Only will happen on flush or invalidate, do we need to assert?
 // M -> I   When "I" have modified, other is invalidating, or flushing. Probably don't need a CCtrans for this
 // M -> S   When "I" have modified, and other is reading. Need to WB so definitely assert FROM other
+
+
+IDLE     	= 4'b0001,
+    	WB1    		= 4'b0010, //
+    	WB2     	= 4'b0011,
+    	FD1     	= 4'b0100, //
+    	FD2     	= 4'b0101,
+    	WBD1     	= 4'b0110, //
+    	WBD2     	= 4'b0111, //
+    	DCHK     	= 4'b1000, //
+    	INVAL    	= 4'b1001,  //
+    	//WRCNT     	= 4'b1010,
+    	SNPD		= 4'b1010, //
+    	SNPWB1		= 4'b1011, //
+    	SNPWB2 		= 4'b1100, //
+    	FLUSHED    	= 4'b1101
 always_comb begin
-
-	// I -> (M | S)
-	if (!valid && (cif.dREN || cif.dWEN)) begin
-		cif.cctrans = 1;
-
-	// S -> M
-	end else if (valid && cif.dWEN)begin
-		cif.cctrans = 1;
+	//Only assert when in states that maqe sense so that the coherence controller doesn't get out of sync
+	if ((state == IDLE) || (state == FD1) || (state == SNPD) || (state == SNPWB1) || (state == SNPWB2) || (state == WB1) || (state == WBD1) || (state == WBD2) || (state == INVAL)) begin
 		
-	end else begin
-		cif.cctrans = 0;
+		// I -> (M | S)
+		if (!valid && (cif.dREN || cif.dWEN)) begin
+			cif.cctrans = 1;
+
+		// S -> M
+		end else if (valid && cif.dWEN)begin
+			cif.cctrans = 1;
+
+		end else begin
+			cif.cctrans = 0;
+		end
 	end
 end
 
