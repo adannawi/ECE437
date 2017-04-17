@@ -116,11 +116,34 @@ module dcache (
 //assign ccif.write = 0;
 //assign ccif.trans = 0;
 always_comb begin
-	//Assert cctrans if its needed to indicate a wb
+	//Assert ccwait if its needed to indicate a wb, i.e. the cache has it in modified
 	if (dhit && modified && cif.ccwait) begin
-		cif.cctrans = 1;
+		cif.ccwrite = 1;
 
 	//Else the other processor can get stuff from memory
+	end else begin
+		cif.ccwrite = 0;
+	end
+end
+
+//Assert cctrans if the cache is changing state
+//Possible transitions, causes
+// I -> M   Writing to data not in cache, need to snoop to get from mem or WB
+// I -> S   Reading data not in cache, need to snoop to get from mem or WB
+// S -> M   This will happen when "I" write, will definitely need to invalidate other copies
+// S -> I   Only will happen on flush or invalidate, do we need to assert?
+// M -> I   When "I" have modified, other is invalidating, or flushing. Probably don't need a CCtrans for this
+// M -> S   When "I" have modified, and other is reading. Need to WB so definitely assert FROM other
+always_comb begin
+
+	// I -> (M | S)
+	if (!valid && (cif.dREN || cif.dWEN)) begin
+		cif.cctrans = 1;
+
+	// S -> M
+	end else if (valid && cif.dWEN)begin
+		cif.cctrans = 1;
+		
 	end else begin
 		cif.cctrans = 0;
 	end
@@ -134,10 +157,10 @@ end
 	It is VERY important that dhit is not asserted to the processor by the cache when coherence states are asserted
 
 	What happens if we snoop an address EXACTLY as the processor goes into IDLE state? would that mean that the processor would take the new value as 
-	it could be modified for snoop? Need to de-assert dhit in that case
+	it could be modified for snoop? Need to de-assert dhit in that case. Uses existing hardware to register a snoop hit
 */
 always_comb begin
-	if (cc) begin
+	if (cif.ccwait) begin
 		dcache = dcachef_t'(cif.ccsnoopaddr)
 	end else begin
 		dcache = dcachef_t'(dcif.dmemaddr);
