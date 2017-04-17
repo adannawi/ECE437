@@ -135,8 +135,8 @@ end
 // M -> I   When "I" have modified, other is invalidating, or flushing. Probably don't need a CCtrans for this
 // M -> S   When "I" have modified, and other is reading. Need to WB so definitely assert FROM other
 
-
-IDLE     	= 4'b0001,
+/*
+		IDLE     	= 4'b0001,
     	WB1    		= 4'b0010, //
     	WB2     	= 4'b0011,
     	FD1     	= 4'b0100, //
@@ -150,16 +150,18 @@ IDLE     	= 4'b0001,
     	SNPWB1		= 4'b1011, //
     	SNPWB2 		= 4'b1100, //
     	FLUSHED    	= 4'b1101
+*/ // whats this for
 always_comb begin
 	//Only assert when in states that maqe sense so that the coherence controller doesn't get out of sync
 	if ((state == IDLE) || (state == FD1) || (state == SNPD) || (state == SNPWB1) || (state == SNPWB2) || (state == WB1) || (state == WBD1) || (state == WBD2) || (state == INVAL)) begin
 		
 		// I -> (M | S)
-		if (!valid && (cif.dREN || cif.dWEN)) begin
+		// changed 'valid' to 'dsets[dcache.idx].way1.valid/2'
+		if ((!dsets[dcache.idx].way1.valid | !dsets[dcache.idx].way2.valid) && (cif.dREN || cif.dWEN)) begin
 			cif.cctrans = 1;
 
 		// S -> M
-		end else if (valid && cif.dWEN)begin
+		end else if ( (!dsets[dcache.idx].way1.valid | !dsets[dcache.idx].way2.valid) && cif.dWEN)begin
 			cif.cctrans = 1;
 
 		end else begin
@@ -180,7 +182,7 @@ end
 */
 always_comb begin
 	if (cif.ccwait) begin
-		dcache = dcachef_t'(cif.ccsnoopaddr)
+		dcache = dcachef_t'(cif.ccsnoopaddr);
 	end else begin
 		dcache = dcachef_t'(dcif.dmemaddr);
 	end
@@ -198,7 +200,7 @@ always_comb begin
 	//This may be solved by LL/SC but this should eliminate some corner cases, if not optimize for it
 	if (cif.ccwait == 1) begin
 		dcif.dhit = 0;
-	end else if 
+	end else begin 
 		//Only really assign dhit for processor when there isn't a coherence operation
 		dcif.dhit = dhit;
 	end
@@ -786,7 +788,7 @@ end
 			DCHK: begin 
 				// Need way to check if dirty or not -> use dirty bits, will be cleaned in DWB2
 				//Assume clean until dirty is found
-				next_state = WRCNT;
+				next_state = FLUSHED; // WRCNT doesn't exist anymore
 
 				//If any are dirty go to write back. Other logic will select the index to write
 				if (some_dirty) begin
@@ -825,7 +827,7 @@ end
 				//modified signal will determine whether or not the selected data is dirty
 				if (dhit && modified) begin
 					next_state = SNPWB1;
-				end else if (dhit && ccinv) begin
+				end else if (dhit && cif.ccinv) begin
 					next_state = INVAL;
 				end else begin
 					next_state = IDLE;
@@ -834,7 +836,7 @@ end
 
 			SNPWB1: begin
 				
-				if (dwait == 0) begin
+				if (cif.dwait == 0) begin
 					next_state = SNPWB2;
 
 				end else begin
@@ -845,11 +847,11 @@ end
 
 			SNPWB2: begin
 
-				if (dwait == 0) && (ccinv == 1) begin
+				if ((cif.dwait == 0) && (cif.ccinv == 1)) begin
 					next_state = INVAL;
 
-				end else if (dwait == 0) begin
-					nest_state = IDLE;
+				end else if (cif.dwait == 0) begin
+					next_state = IDLE;
 
 					
 				end else begin
@@ -960,12 +962,13 @@ end
 				word_sel = 0;
 			end
 
-			WRCNT: begin
-				dcif.flushed = 0;
+			/*WRCNT: begin
+			dcif.flushed = 0;
 				cif.dREN = 0;
 				cif.dWEN = 1;
 				word_sel = 0;
 			end
+			*/
 
 			FLUSHED: begin
 				dcif.flushed = 1;
