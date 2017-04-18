@@ -167,7 +167,7 @@ module datapath (
   always_ff @(posedge CLK, negedge nRST) begin
     if (nRST == 0) begin
       //What to do here? reset to 0 for now
-      PC <= 0;
+      PC <= PC_INIT;
     end else if (PCEn == 1) begin
       if (normal_op) begin
         PC <= PCNxt;
