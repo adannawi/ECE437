@@ -706,7 +706,7 @@ end
     	WRCNT   
     	FLUSHED     	
 */
-	
+	assign miss = !dhit;
 	//Next State Logic
 	always_comb begin	
 		//if (state == IDLE) begin
