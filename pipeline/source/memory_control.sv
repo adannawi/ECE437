@@ -79,7 +79,7 @@ module memory_control (
 
   typedef enum logic [2:0]{
     IDLE = 3'b001,
-    ARBITRATE = 3'b010,
+    INV = 3'b010,
     SNOOP = 3'b011,
     CTC1 = 3'b100,
     CTC2 = 3'b101,
@@ -285,19 +285,16 @@ always_comb begin
   casez(state)
     IDLE: begin
         if (ccif.cctrans[1] || ccif.cctrans[0]) begin
-          nextstate = ARBITRATE;
+          nextstate = SNOOP;
         end
-        end
-    ARBITRATE: begin
-        nextstate = SNOOP;
         end
     SNOOP: begin
         if (ccif.ccwrite[~servicing]) begin
           nextstate = CTC1;
-        end else if (ccif.ccwrite[servicing]) begin
+        end else if (!ccif.ccwrite[servicing] && !ccif.ccwrite[~servicing]) begin
           nextstate = MEM1;
-        end else begin
-          nextstate = IDLE;
+        end else if (ccif.ccwrite[servicing]) begin
+          nextstate = INV;
         end
         end
     CTC1: begin
@@ -351,17 +348,24 @@ always_comb begin
     coif.dwait[servicing] = 0;
     coif.dwait[~servicing] = 0;
     end // default:
+    /*
   ARBITRATE: begin
     coif.ccwait[~servicing] = 1;
     coif.ccinv[~servicing] = ccif.ccwrite[servicing];
+    coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.dwait[servicing] = 1;
     coif.dwait[~servicing] = 1;
+    */ // ded
   end
   SNOOP: begin
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccwait[~servicing] = 1;
     coif.dwait[servicing] = 1;
     coif.dwait[~servicing] = 1;
+  end
+  INV: begin
+    coif.ccinv[~servicing] = 1;
+    coif.ccinv[servicing] = 0;
   end
   CTC1: begin
     coif.ramaddr = ccif.daddr[~servicing];
@@ -426,11 +430,14 @@ assign ccif.ccinv = coif.ccinv;
 
 //////////      MUX BETWEEN SIGNALS       ////////////
 always_comb begin
+
+    /*
     ccif.ramaddr = '0;
     ccif.ramstore = '0;
     ccif.ramWEN = '0;
     ccif.ramREN = '0;
     ccif.dload = '0;
+    */
 
     if (state != IDLE) begin // We're being coherent
       ccif.ramaddr = coif.ramaddr;
@@ -438,14 +445,16 @@ always_comb begin
       ccif.ramWEN = coif.ramWEN;
       ccif.ramREN = coif.ramREN;
       ccif.dload = coif.dload;
-      ccif.dwait = coif.dwait;
+      ccif.dwait[0] = coif.dwait[0];
+      ccif.dwait[1] = coif.dwait[1];
     end else begin // No coherence
       ccif.ramaddr = mmif.ramaddr;
       ccif.ramstore = mmif.ramstore;
       ccif.ramWEN = mmif.ramWEN;
       ccif.ramREN = mmif.ramREN;
       ccif.dload = mmif.dload;
-      ccif.dwait = mmif.dwait;
+      ccif.dwait[0] = mmif.dwait[0];
+      ccif.dwait[1] = mmif.dwait[1];
 
       // other stuff
     end
