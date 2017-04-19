@@ -166,7 +166,7 @@ always_comb begin
 			cif.cctrans = 1;
 
 		// S -> M
-		end else if ( (!dsets[dcache.idx].way1.valid | !dsets[dcache.idx].way2.valid) && cif.dWEN)begin
+		end else if ( (dsets[dcache.idx].way1.valid | dsets[dcache.idx].way2.valid) && cif.dWEN)begin
 			cif.cctrans = 1;
 
 		end else begin
@@ -439,11 +439,11 @@ begin
 
 			//On INVAL, invalidate way 1 if needed
 			if (dsets[dcache.idx].way1.tag == dcache.tag) begin
-				dsets[dcache.idx].way1.valid = 0;
+				dsets[dcache.idx].way1.valid <= 0;
 
 			//On INVAL, invalidate way 2 if needed
 			end else if (dsets[dcache.idx].way2.tag == dcache.tag) begin
-				dsets[dcache.idx].way2.valid = 0;
+				dsets[dcache.idx].way2.valid <= 0;
 			end
 		end
 		//Clean reset of dirty bits
