@@ -291,7 +291,7 @@ always_comb begin
     SNOOP: begin
         if (ccif.cctrans[~servicing] && ccif.ccwrite[~servicing]) begin
           nextstate = CTC1;
-        end else if (ccif.cctrans[~servicnig] && !ccif.ccwrite[servicing] && !ccif.ccwrite[~servicing]) begin
+        end else if (ccif.cctrans[~servicing] && !ccif.ccwrite[servicing] && !ccif.ccwrite[~servicing]) begin
           nextstate = MEM1;
         end else if (ccif.cctrans[~servicing] && ccif.ccwrite[servicing]) begin
           nextstate = INV;
@@ -323,6 +323,7 @@ always_comb begin
         end
     INV: begin
         nextstate = IDLE;
+    end
     default: begin
         nextstate = state;
         end
@@ -361,8 +362,8 @@ always_comb begin
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.dwait[servicing] = 1;
     coif.dwait[~servicing] = 1;
-    */ // ded
-  end
+    // ded
+  end */
   SNOOP: begin
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccwait[~servicing] = 1;
