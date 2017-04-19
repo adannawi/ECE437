@@ -172,13 +172,15 @@ always_comb begin
 		end else begin
 			cif.cctrans = 0;
 		end
-	end else if ((state == SNPD) || (state == SNPWB1) || (state == SNPWB2) || (state == WB1) || (state == INVAL))
+	end else if ((state == SNPD) || (state == SNPWB1) || (state == SNPWB2) || (state == INVAL))
+		
 		//Set cctrans to tell the coherence controller that the data is in the cache in case of hit
-		if (dhit) begin
+		if ((dhit && modified) || (dhit && cif.ccinv)) begin
 			cif.cctrans = 1;
 		end else begin
 			cif.cctrans = 0;
 		end
+
 	end else begin
 		cif.cctrans = 0;
 	end
@@ -500,7 +502,17 @@ always_comb begin
 		cWEN = '0;
 
 	//Write on hit, if not writing back from memory to cache block
-	end else if (dhit && dcif.dmemWEN && !memtocache) begin
+	end else if (dhit && dcif.dmemWEN && !memtocache && shared && (state == IDLE)) begin
+		//Enable whichever index has the matching tag, & block
+		//Indexes 000 to 111
+		if (dsets[dcache.idx].way1.tag == dcache.tag) begin
+			cWEN[{dcache.idx,1'b0}] = 1;
+		end else  begin
+			//Will not have a hit if this second one mdoesn't match, so can use an else instead of if else
+			cWEN[{dcache.idx,1'b1}] = 1;
+		end
+
+	end else if (dhit && dcif.dmemWEN && !memtocache && shared && (state == WRSNP)) begin
 		//Enable whichever index has the matching tag, & block
 		//Indexes 000 to 111
 		if (dsets[dcache.idx].way1.tag == dcache.tag) begin
@@ -775,9 +787,14 @@ end
 					end
 
 				//On a hit just stay IDLE
-				end else if (dhit) begin
+				end else if (dhit && !shared) begin
 					next_state = IDLE;
 
+				end else if (dhit && shared) begin 
+					next_state = WRSNP;
+
+				end else begin
+					next_state = IDLE;
 				end
 			end
 
@@ -864,7 +881,7 @@ end
 				end
 			end
 
-						INVAL: begin
+			INVAL: begin
 				next_state = IDLE;
 			end
 
@@ -876,6 +893,7 @@ end
 				end else if (dhit && cif.ccinv) begin
 					next_state = INVAL;
 				end else begin
+					//Else in shared and other core needs to just go Read from Mem
 					next_state = IDLE;
 				end
 			end
@@ -907,7 +925,11 @@ end
 			end
 
 			WRSNP: begin
+				if (cif.ccinv) begin
+					next_state = IDLE;
+				end else begin
 					next_state = WRINV;
+				end
 			end
 
 			WRINV: begin
@@ -1034,6 +1056,14 @@ end
 			end
 
 			WRSNP: begin
+				cif.dREN = 0;
+				cif.dWEN = 0;
+				word_sel = 0;
+				dcif.flushed = 0;
+				memtocache = 0;
+			end
+
+			WRINV: begin
 				cif.dREN = 0;
 				cif.dWEN = 0;
 				word_sel = 0;
