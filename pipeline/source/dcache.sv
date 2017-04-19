@@ -38,7 +38,9 @@ module dcache (
     	SNPD		= 4'b1010,
     	SNPWB1		= 4'b1011,
     	SNPWB2 		= 4'b1100,
-    	FLUSHED    	= 4'b1101
+    	FLUSHED    	= 4'b1101,
+    	WRSNP		= 4'b1110, //Needed to invalidate other if memory is in shared.
+    	WRINV		= 4'b1111  //Not a good design decision, but easier than changing how things get invalidtaed
 	} Statetype;
 
 	//Local Variables
@@ -84,7 +86,7 @@ module dcache (
 	//Coherence
 	logic modified; //Indicates if whatever data currently being observed is modified
 	logic invalid; //Indicates if whatever data currently being observed is invalid
-
+	logic shared; //Inidicates if data is in shared
 
 
     //   26 bits tag | 3 bits idx | 1 bit block offset | 2 bits of byte offset (4 bytes/32 bits)
@@ -109,22 +111,36 @@ module dcache (
   //);
 
 /////////////////////////////////////////////////////////////
+//					Link Register
+/////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////
 //					Coherence Signals
 /////////////////////////////////////////////////////////////
 //Dat coherence tho
 
 //assign ccif.write = 0;
 //assign ccif.trans = 0;
+/*
 always_comb begin
 	//Assert ccwait if its needed to indicate a wb, i.e. the cache has it in modified
-	if (dhit && modified && cif.ccwait) begin
+	if (modified && cif.ccwait) begin
 		cif.ccwrite = 1;
 
 	//Else the other processor can get stuff from memory
 	end else begin
 		cif.ccwrite = 0;
 	end
-end
+end*/
+
+//Assign this comibinationally since it will get ignored UNLESS ccwait is asserted
+//Asserted for when the data is in the cache, but not modified so the other must be invalidated
+//Also asserted when writing and snooping other cache for data
+assign cif.ccwrite = dcif.dmemWEN && ((dhit && !modified) || !dhit);
+
 
 //Assert cctrans if the cache is changing state
 //Possible transitions, causes
@@ -135,25 +151,14 @@ end
 // M -> I   When "I" have modified, other is invalidating, or flushing. Probably don't need a CCtrans for this
 // M -> S   When "I" have modified, and other is reading. Need to WB so definitely assert FROM other
 
-/*
-		IDLE     	= 4'b0001,
-    	WB1    		= 4'b0010, //
-    	WB2     	= 4'b0011,
-    	FD1     	= 4'b0100, //
-    	FD2     	= 4'b0101,
-    	WBD1     	= 4'b0110, //
-    	WBD2     	= 4'b0111, //
-    	DCHK     	= 4'b1000, //
-    	INVAL    	= 4'b1001,  //
-    	//WRCNT     	= 4'b1010,
-    	SNPD		= 4'b1010, //
-    	SNPWB1		= 4'b1011, //
-    	SNPWB2 		= 4'b1100, //
-    	FLUSHED    	= 4'b1101
-*/ // whats this for
+
+
+//FOR THIS TO WORK WE MUST HAVE THE DATA VALIDATED CORRECTLY AT THE RIGHT TIME
 always_comb begin
 	//Only assert when in states that maqe sense so that the coherence controller doesn't get out of sync
-	if ((state == IDLE) || (state == FD1) || (state == SNPD) || (state == SNPWB1) || (state == SNPWB2) || (state == WB1) || (state == WBD1) || (state == WBD2) || (state == INVAL)) begin
+
+	//Not sure about dirty flush states
+	if ((state == IDLE) || (state == FD1) || (state == WB1)) begin//|| (state == WBD1) || (state == WBD2) || (state == DCHK)) begin
 		
 		// I -> (M | S)
 		// changed 'valid' to 'dsets[dcache.idx].way1.valid/2'
@@ -167,6 +172,15 @@ always_comb begin
 		end else begin
 			cif.cctrans = 0;
 		end
+	end else if ((state == SNPD) || (state == SNPWB1) || (state == SNPWB2) || (state == WB1) || (state == INVAL))
+		//Set cctrans to tell the coherence controller that the data is in the cache in case of hit
+		if (dhit) begin
+			cif.cctrans = 1;
+		end else begin
+			cif.cctrans = 0;
+		end
+	end else begin
+		cif.cctrans = 0;
 	end
 end
 
@@ -251,6 +265,8 @@ always_comb begin
 		end
 	end
 end
+
+assign shared = !invalid && !modified;
 
 /////////////////////////////////////////////////////////////
 //			Logic for reading out of cache
@@ -346,7 +362,7 @@ begin
 			//Check first way in set
 			if (cWEN[{dcache.idx,1'b0}]) begin
 
-				//Write data, set dirty, should already be valid
+				//Write data, set dirty, MUST already be valid
 				if (dcache.blkoff == 0) begin
 					//Write to first block if offset == 0
 					dsets[dcache.idx].way1.word1 <= block_data;
@@ -377,13 +393,13 @@ begin
 				//Write to first way
 				dsets[dcache.idx].way1.word1 <= block_data;
 				dsets[dcache.idx].way1.dirty <= 0;
-				dsets[dcache.idx].way1.valid <= 1;
+				dsets[dcache.idx].way1.valid <= 0;
 
 			end else if (cWEN[{dcache.idx,1'b1}] == 1) begin
 				//If not first, Write to second way
 				dsets[dcache.idx].way2.word1 <= block_data;
 				dsets[dcache.idx].way2.dirty <= 0;
-				dsets[dcache.idx].way2.valid <= 1;
+				dsets[dcache.idx].way2.valid <= 0;
 			end
 		end else if (state == FD2) begin
 
@@ -400,8 +416,24 @@ begin
 				dsets[dcache.idx].way2.dirty <= 0;
 				dsets[dcache.idx].way2.valid <= 1;
 				dsets[dcache.idx].way2.tag <= dcache.tag;
-			end 			
-		end
+			end 	
+		end else if (state == WRSNP) && (dhit) begin	
+			//Check for hit
+			if (cWEN[{dcache.idx,1'b0}] == 1) begin
+				//Write to first way
+				dsets[dcache.idx].way1.word2 <= block_data;
+				dsets[dcache.idx].way1.dirty <= 0;
+				dsets[dcache.idx].way1.valid <= 1;
+				dsets[dcache.idx].way1.tag <= dcache.tag;
+
+			end else if (cWEN[{dcache.idx,1'b1}] == 1) begin
+				//If not first, Write to second way
+				dsets[dcache.idx].way2.word2 <= block_data;
+				dsets[dcache.idx].way2.dirty <= 0;
+				dsets[dcache.idx].way2.valid <= 1;
+				dsets[dcache.idx].way2.tag <= dcache.tag;
+			end 	
+		end else if (state == INVAL) begin
 
 		//Clean reset of dirty bits
 		for (i = 0; i < 8; i++) begin
@@ -431,7 +463,7 @@ always_comb begin
 	clean = '0;
 	if (state == WBD2 && !cif.dwait) begin
 		clean[next_dirty] = 1;
-	end else if (state == INVAL) begin
+	/*end else if (state == INVAL) begin
 		//Setting correct clean on INVAL
 		if ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) begin
 			clean[{dcache.idx,1'b0}] = 1;
@@ -440,7 +472,7 @@ always_comb begin
 		end else if ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1)) begin
 			clean[{dcache.idx,1'b1}] = 1;
 
-		end
+		end*/
 	end
 end
 
@@ -463,8 +495,12 @@ always_comb begin
 	//Default to no writes, safe practice, easier to catch
 	cWEN = '0;
 
+	//Never write on a snoop
+	if (cif.ccwait) begin
+		cWEN = '0;
+
 	//Write on hit, if not writing back from memory to cache block
-	if (dhit && dcif.dmemWEN && !memtocache) begin
+	end else if (dhit && dcif.dmemWEN && !memtocache) begin
 		//Enable whichever index has the matching tag, & block
 		//Indexes 000 to 111
 		if (dsets[dcache.idx].way1.tag == dcache.tag) begin
@@ -725,6 +761,10 @@ end
 				if (dcif.halt) begin
 					//On halt when not already getting data, go to write back dirty sta
 					next_state = DCHK;
+
+				end else if (dcif.ccwait) begin
+					next_state = SNPD;
+
 				end else if (miss && (dcif.dmemREN | dcif.dmemWEN)) begin
 					if (lru[dcache.idx] && dsets[dcache.idx].way2.dirty) begin
 						next_state = WB1;
@@ -743,7 +783,10 @@ end
 
 			WB1: begin
 				//Move on if not waiting on memory
-				if (!cif.dwait) begin
+				if (dcif.ccwait) begin
+					next_state = SNPD;
+
+				end else if (!cif.dwait) begin
 					next_state = WB2;
 
 				//Else keep waiting
@@ -765,7 +808,10 @@ end
 
 			FD1: begin
 				//Move to get second word if memory done
-				if (!cif.dwait) begin
+				if (dcif.ccwait) begin
+					next_state = SNPD;
+
+				end else if (!cif.dwait) begin
 					next_state = FD2;
 
 				//Else keep waiting
@@ -859,18 +905,14 @@ end
 					next_state = SNPWB1;
 				end
 			end
-			/* Obsolete for MC
-			WRCNT: begin
-				if (!cif.dwait) begin
-					next_state = FLUSHED;
-				
-				//Else keep waiting
-				end else begin
-					next_state = state;
 
-				end
+			WRSNP: begin
+					next_state = WRINV;
 			end
-			*/
+
+			WRINV: begin
+				next_state = IDLE;
+			end
 
 			default: begin
 				next_state = state;
@@ -989,6 +1031,14 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 1;
 				word_sel = 1;
+			end
+
+			WRSNP: begin
+				cif.dREN = 0;
+				cif.dWEN = 0;
+				word_sel = 0;
+				dcif.flushed = 0;
+				memtocache = 0;
 			end
 
 		endcase
