@@ -172,7 +172,7 @@ always_comb begin
 		end else begin
 			cif.cctrans = 0;
 		end
-	end else if ((state == SNPD) || (state == SNPWB1) || (state == SNPWB2) || (state == INVAL))
+	end else if ((state == SNPD) || (state == SNPWB1) || (state == SNPWB2) || (state == INVAL)) begin
 		
 		//Set cctrans to tell the coherence controller that the data is in the cache in case of hit
 		if ((dhit && modified) || (dhit && cif.ccinv)) begin
@@ -419,7 +419,7 @@ begin
 				dsets[dcache.idx].way2.valid <= 1;
 				dsets[dcache.idx].way2.tag <= dcache.tag;
 			end 	
-		end else if (state == WRSNP) && (dhit) begin	
+		end else if ((state == WRSNP) && (dhit)) begin	
 			//Check for hit
 			if (cWEN[{dcache.idx,1'b0}] == 1) begin
 				//Write to first way
@@ -437,6 +437,15 @@ begin
 			end 	
 		end else if (state == INVAL) begin
 
+			//On INVAL, invalidate way 1 if needed
+			if (dsets[dcache.idx].way1.tag == dcache.tag) begin
+				dsets[dcache.idx].way1.valid = 0;
+
+			//On INVAL, invalidate way 2 if needed
+			end else if (dsets[dcache.idx].way2.tag == dcache.tag) begin
+				dsets[dcache.idx].way2.valid = 0;
+			end
+		end
 		//Clean reset of dirty bits
 		for (i = 0; i < 8; i++) begin
 			if (dsets[i].way1.dirty == 1) begin
@@ -774,7 +783,7 @@ end
 					//On halt when not already getting data, go to write back dirty sta
 					next_state = DCHK;
 
-				end else if (dcif.ccwait) begin
+				end else if (cif.ccwait) begin
 					next_state = SNPD;
 
 				end else if (miss && (dcif.dmemREN | dcif.dmemWEN)) begin
@@ -800,7 +809,7 @@ end
 
 			WB1: begin
 				//Move on if not waiting on memory
-				if (dcif.ccwait) begin
+				if (cif.ccwait) begin
 					next_state = SNPD;
 
 				end else if (!cif.dwait) begin
@@ -825,7 +834,7 @@ end
 
 			FD1: begin
 				//Move to get second word if memory done
-				if (dcif.ccwait) begin
+				if (cif.ccwait) begin
 					next_state = SNPD;
 
 				end else if (!cif.dwait) begin
