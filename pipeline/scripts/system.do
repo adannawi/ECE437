@@ -1,153 +1,55 @@
 onerror {resume}
 quietly WaveActivateNextPane {} 0
-add wave -noupdate /system_tb/DUT/prif/ramREN
-add wave -noupdate /system_tb/DUT/prif/ramWEN
-add wave -noupdate /system_tb/DUT/prif/ramaddr
-add wave -noupdate /system_tb/DUT/prif/ramstore
-add wave -noupdate /system_tb/DUT/prif/ramload
-add wave -noupdate /system_tb/DUT/prif/ramstate
-add wave -noupdate /system_tb/DUT/prif/memREN
-add wave -noupdate /system_tb/DUT/prif/memWEN
-add wave -noupdate /system_tb/DUT/prif/memaddr
-add wave -noupdate /system_tb/DUT/prif/memstore
-add wave -noupdate -expand -group dpif /system_tb/DUT/CLK
-add wave -noupdate -expand -group dpif /system_tb/DUT/CPU/DP/CLK
-add wave -noupdate -expand -group dpif /system_tb/nRST
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/flushed
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/halt
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/imemREN
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/imemload
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/imemaddr
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/datomic
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/dmemREN
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/dmemWEN
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/dmemload
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/dmemstore
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/dmemaddr
-add wave -noupdate -expand -group ifid /system_tb/DUT/CPU/DP/feif/flush
-add wave -noupdate -expand -group ifid /system_tb/DUT/CPU/DP/feif/enable
-add wave -noupdate -expand -group ifid /system_tb/DUT/CPU/DP/feif/InstructionIN
-add wave -noupdate -expand -group ifid /system_tb/DUT/CPU/DP/feif/opcodeIN
-add wave -noupdate -expand -group ifid /system_tb/DUT/CPU/DP/feif/PCIncIN
-add wave -noupdate -expand -group ifid /system_tb/DUT/CPU/DP/feif/InstructionOUT
-add wave -noupdate -expand -group ifid /system_tb/DUT/CPU/DP/feif/opcodeOUT
-add wave -noupdate /system_tb/DUT/CPU/DP/feif/PCIncOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/PCIncIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/writeRegIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/dWENIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/MemtoRegIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/dRENIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/PCSrcIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/RegWDSelIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/RegDstIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/ALUSrcIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/rdIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/rtIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/aluopIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/Ext_datIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/opcodeIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/busAIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/busBIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/InstructionIN
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/PCIncOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/writeRegOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/dWENOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/dRENOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/MemtoRegOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/PCSrcOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/RegWDSelOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/RegDstOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/ALUSrcOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/aluopOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/opcodeOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/Ext_datOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/rdOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/rtOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/busAOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/busBOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/InstructionOUT
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/flush
-add wave -noupdate -expand -group idex /system_tb/DUT/CPU/DP/deif/enable
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/PCIncIN
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/writeRegIN
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/MemtoRegIN
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/dWENIN
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/dRENIN
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/RegWDSelIN
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/rwIN
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/opcodeIN
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/resultIN
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/busBIN
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/flush
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/PCIncOUT
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/writeRegOUT
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/MemtoRegOUT
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/dWENOUT
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/dRENOUT
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/RegWDSelOUT
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/enable
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/rwOUT
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/opcodeOUT
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/busBOUT
-add wave -noupdate -expand -group exmem /system_tb/DUT/CPU/DP/exif/resultOUT
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/writeRegOUT
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/MemtoRegOUT
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/PCIncOUT
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/rwOUT
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/opcodeOUT
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/RegWDSelOUT
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/resultOUT
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/dmemloadOUT
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/flush
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/writeRegIN
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/MemtoRegIN
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/PCIncIN
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/rwIN
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/opcodeIN
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/RegWDSelIN
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/enable
-add wave -noupdate -expand -group memwb /system_tb/DUT/CPU/DP/mmif/resultIN
-add wave -noupdate /system_tb/DUT/CPU/DP/mmif/dmemloadIN
-add wave -noupdate /system_tb/DUT/CPU/DP/PCNxt
-add wave -noupdate /system_tb/DUT/CPU/DP/huif/rs
-add wave -noupdate /system_tb/DUT/CPU/DP/huif/rt
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/execDest
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/memDest
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/branch
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/PCStall
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/fetch_stall
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/fetch_flush
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/decode_stall
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/decode_flush
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/execute_stall
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/execute_flush
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/memory_stall
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/memory_flush
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/MemRead_Ex
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/MemRead_Mem
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/ihit
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/dhit
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/writeReg_mem
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/writeReg_exec
-add wave -noupdate -expand -label sim:/system_tb/DUT/CPU/DP/huif/Group1 -group {Region: sim:/system_tb/DUT/CPU/DP/huif} /system_tb/DUT/CPU/DP/huif/opcode
+add wave -noupdate /system_tb/CLK
+add wave -noupdate /system_tb/nRST
+add wave -noupdate /system_tb/DUT/RAM/ramif/ramREN
+add wave -noupdate /system_tb/DUT/RAM/ramif/ramWEN
+add wave -noupdate /system_tb/DUT/RAM/ramif/ramaddr
+add wave -noupdate /system_tb/DUT/RAM/ramif/ramstore
+add wave -noupdate /system_tb/DUT/RAM/ramif/ramload
+add wave -noupdate /system_tb/DUT/RAM/ramif/ramstate
+add wave -noupdate /system_tb/DUT/RAM/ramif/memREN
+add wave -noupdate /system_tb/DUT/RAM/ramif/memWEN
+add wave -noupdate /system_tb/DUT/RAM/ramif/memaddr
+add wave -noupdate /system_tb/DUT/RAM/ramif/memstore
 TreeUpdate [SetDefaultTree]
 quietly WaveActivateNextPane
-add wave -noupdate -label {Fetch Instr} /system_tb/DUT/CPU/DP/feif/opcodeIN
-add wave -noupdate -label {ifid Instr} /system_tb/DUT/CPU/DP/feif/opcodeOUT
-add wave -noupdate -label {idex Instr} /system_tb/DUT/CPU/DP/deif/opcodeOUT
-add wave -noupdate -label {exmem Instr} /system_tb/DUT/CPU/DP/exif/opcodeOUT
-add wave -noupdate -label {memwb Instr} /system_tb/DUT/CPU/DP/mmif/opcodeOUT
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/ihit
-add wave -noupdate /system_tb/DUT/CPU/DP/dpif/dhit
-add wave -noupdate /system_tb/DUT/CPU/DP/PC
-add wave -noupdate /system_tb/DUT/CPU/DP/branch
-add wave -noupdate /system_tb/DUT/CPU/DP/branchaddr
-add wave -noupdate /system_tb/DUT/CPU/DP/PCSrc
+add wave -noupdate -divider -height 30 {Coherence Controller}
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {1092963 ps} 0}
+quietly WaveActivateNextPane
+add wave -noupdate -divider -height 30 {Cache Signals}
+TreeUpdate [SetDefaultTree]
+quietly WaveActivateNextPane
+add wave -noupdate -divider -height 30 {Core 1}
+add wave -noupdate -divider {Core 1 Instr}
+add wave -noupdate -label {IF Instr} /system_tb/DUT/CPU/DP0/feif/InstructionIN
+add wave -noupdate -label {DE Instr} /system_tb/DUT/CPU/DP0/feif/InstructionOUT
+add wave -noupdate -label {EX Instr} /system_tb/DUT/CPU/DP0/exif/InstructionIN
+add wave -noupdate -label {MEM Instr} /system_tb/DUT/CPU/DP0/exif/InstructionOUT
+add wave -noupdate -label {WB Instr} /system_tb/DUT/CPU/DP0/mmif/InstructionOUT
+add wave -noupdate -divider {Core 1 Opcodes}
+add wave -noupdate -label {IF Opcode} /system_tb/DUT/CPU/DP0/feif/opcodeIN
+add wave -noupdate -label {DE Opcode} /system_tb/DUT/CPU/DP0/feif/opcodeOUT
+add wave -noupdate -label {EX Opcode} /system_tb/DUT/CPU/DP0/exif/opcodeIN
+add wave -noupdate -label {MEM Opcode} /system_tb/DUT/CPU/DP0/exif/opcodeOUT
+add wave -noupdate -label {WB Opcode} /system_tb/DUT/CPU/DP0/mmif/opcodeOUT
+add wave -noupdate -divider -height 30 {Core 2}
+add wave -noupdate -label {IF Instr} /system_tb/DUT/CPU/DP1/feif/InstructionIN
+add wave -noupdate -label {DE Instr} /system_tb/DUT/CPU/DP1/feif/InstructionOUT
+add wave -noupdate -label {EX Instr} /system_tb/DUT/CPU/DP1/exif/InstructionIN
+add wave -noupdate -label {MEM Instr} /system_tb/DUT/CPU/DP1/exif/InstructionOUT
+add wave -noupdate -label {WB Instr} /system_tb/DUT/CPU/DP1/mmif/InstructionOUT
+add wave -noupdate -divider {Core 2 Opcode}
+add wave -noupdate -label {IF Opcode} /system_tb/DUT/CPU/DP1/feif/opcodeIN
+add wave -noupdate -label {DE Opcode} /system_tb/DUT/CPU/DP1/feif/opcodeOUT
+add wave -noupdate -label {EX Opcode} /system_tb/DUT/CPU/DP1/exif/opcodeIN
+add wave -noupdate -label {MEM Opcode} /system_tb/DUT/CPU/DP1/exif/opcodeOUT
+add wave -noupdate -label {WB Instr} /system_tb/DUT/CPU/DP1/mmif/opcodeOUT
+TreeUpdate [SetDefaultTree]
+WaveRestoreCursors {{Cursor 1} {513881 ps} 0}
 quietly wave cursor active 1
-configure wave -namecolwidth 271
-configure wave -valuecolwidth 100
+configure wave -namecolwidth 150
+configure wave -valuecolwidth 237
 configure wave -justifyvalue left
 configure wave -signalnamewidth 1
 configure wave -snapdistance 10
@@ -160,4 +62,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ps} {2625 ns}
+WaveRestoreZoom {0 ps} {72239 ps}
