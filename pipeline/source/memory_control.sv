@@ -90,7 +90,7 @@ module memory_control (
   StateType state, nextstate;
   logic nextservice; //set which cache is being serviced
   logic servicing;
-  logic decide;
+  //logic decide;
   logic dreq[1:0];
   logic ireq[1:0];
 
