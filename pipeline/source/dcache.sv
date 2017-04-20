@@ -114,6 +114,10 @@ module dcache (
 //					Link Register
 /////////////////////////////////////////////////////////////
 
+
+
+
+
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
 
@@ -139,8 +143,39 @@ end*/
 //Assign this comibinationally since it will get ignored UNLESS ccwait is asserted
 //Asserted for when the data is in the cache, but not modified so the other must be invalidated
 //Also asserted when writing and snooping other cache for data
-assign cif.ccwrite = dcif.dmemWEN && ((dhit && !modified) || !dhit);
 
+always_comb begin
+	//While snooping
+	if (!cif.ccwait) begin
+		if (dcif.dmemWEN && ((dhit && !modified) || !dhit)) begin
+			cif.ccwrite = 1;
+		end else begin
+			cif.ccwrite = 0;
+		end
+
+	//For being snooped
+	end else if (cif.ccwait) begin
+
+		//For WB
+		//I need to write back, will be asserted with CCtrans
+		if (modified) begin
+			cif.ccwrite = 1;
+
+		//Set CCtrans when going to b
+
+		//When asserted not with cctrans, means "go ahead and write, I don't have it"
+
+
+		//When not in cache, tell it to go to mem 
+		//end else if (invalid) begin
+			//cif.ccwrite = 0;
+
+		//Else hold at 0, coherence will dceide based on cctrans from this core (the one being snooped)
+		end else begin
+			cif.ccwrite = 0;
+		end
+	end
+end
 
 //Assert cctrans if the cache is changing state
 //Possible transitions, causes
@@ -157,30 +192,43 @@ assign cif.ccwrite = dcif.dmemWEN && ((dhit && !modified) || !dhit);
 always_comb begin
 	//Only assert when in states that maqe sense so that the coherence controller doesn't get out of sync
 
-	//Not sure about dirty flush states
+	//Set only on states
 	if ((state == IDLE) || (state == FD1) || (state == WB1)) begin//|| (state == WBD1) || (state == WBD2) || (state == DCHK)) begin
 		
 		// I -> (M | S)
 		// changed 'valid' to 'dsets[dcache.idx].way1.valid/2'
-		if ((!dsets[dcache.idx].way1.valid | !dsets[dcache.idx].way2.valid) && (cif.dREN || cif.dWEN)) begin
+		if ((!dsets[dcache.idx].way1.valid || !dsets[dcache.idx].way2.valid) && (cif.dREN || cif.dWEN)) begin
 			cif.cctrans = 1;
 
 		// S -> M
-		end else if ( (dsets[dcache.idx].way1.valid | dsets[dcache.idx].way2.valid) && cif.dWEN)begin
-			cif.cctrans = 1;
-
-		end else begin
-			cif.cctrans = 0;
-		end
-	end else if ((state == SNPD) || (state == SNPWB1) || (state == SNPWB2) || (state == INVAL)) begin
 		
-		//Set cctrans to tell the coherence controller that the data is in the cache in case of hit
-		if ((dhit && modified) || (dhit && cif.ccinv)) begin
+		end else if ( (dsets[dcache.idx].way1.valid || dsets[dcache.idx].way2.valid) && cif.dWEN)begin
 			cif.cctrans = 1;
+
 		end else begin
 			cif.cctrans = 0;
 		end
 
+	//Setting trans for snoop'd states
+	//Could also try to set based off of 
+	end else if ((state == SNPD) || (state == SNPWB1) || (state == SNPWB2) || (state == INVAL)) begin
+
+		//Set cctrans to tell the coherence controller that the data is in the cache in case of hit
+		//Handles WB and INVAL cases
+
+		//When you need WB
+		if (dhit && modified) begin
+			cif.cctrans = 1;
+
+		//Set cctrans to indicate that you need to invalidate (trust that ccwrite is set correctly)
+		end else if (dhit && shared && cif.ccinv) begin
+			cif.cctrans = 1; 
+
+		//Else set to 0
+		end else begin
+			cif.cctrans = 0;
+		end
+	
 	end else begin
 		cif.cctrans = 0;
 	end
@@ -787,9 +835,10 @@ end
 					next_state = SNPD;
 
 				end else if (miss && (dcif.dmemREN | dcif.dmemWEN)) begin
-					if (lru[dcache.idx] && dsets[dcache.idx].way2.dirty) begin
+					//WB states based on LRU if data remaining is valid
+					if ((lru[dcache.idx] && dsets[dcache.idx].way2.dirty) && dsets[dcache.idx].way2.valid) begin
 						next_state = WB1;
-					end else if (!lru[dcache.idx] && dsets[dcache.idx].way1.dirty) begin
+					end else if ((!lru[dcache.idx] && dsets[dcache.idx].way1.dirty) && dsets[dcache.idx].way1.valid) begin
 						next_state = WB1;
 					end else begin
 						next_state = FD1;
@@ -897,10 +946,27 @@ end
 			SNPD: begin
 				//Hit determines if its in the cache, if not must be invalid
 				//modified signal will determine whether or not the selected data is dirty
+
+				//WB if dirty
 				if (dhit && modified) begin
 					next_state = SNPWB1;
+
+				//Move this cache to INVAL if needed
 				end else if (dhit && cif.ccinv) begin
 					next_state = INVAL;
+
+				//Keep this cache in SNPD if waiting for other core to finish (for Shared in both, waiting for mem OP)
+				//end else if (cif.ccwait) begin
+				//	next_state = SNPD;
+				// ^^^^^ I think this is excessive, could run into issues when this should be serviced next, but won't assert that it needs to be serviced until cycle
+				//		  after the other core finishes, may be ready to be serviced again. As long as coherence holds the cif.ccwait this will just keep checking
+				//		  to see if coherence is done.
+				//		
+				//			MAY NEED TO READD ARBITRATE STATE FOR THE CASE WHERE THIS KEEPS GOING BACK TO CHECK IF SNOOP IS DONE, BUT OTHER IS JUST COMPLETED
+				//			AND THIS CORE WILL NOT PROPERLY ASSERT THAT IT WANTS TO PERFORM AN OPERATION UNTIL IT IS A CYCLE LATE. ASSERTING THIS IN SNOOP MAY
+				//			BE SUFFICIENT SINCE THE OTHER CORE WILL BE IN WB1/FD1 AND CAN GO TO SNOOPED FORM THERE
+
+				//Default for when 
 				end else begin
 					//Else in shared and other core needs to just go Read from Mem
 					next_state = IDLE;
@@ -934,11 +1000,11 @@ end
 			end
 
 			WRSNP: begin
-				if (cif.ccinv) begin
-					next_state = IDLE;
-				end else begin
+				//if (cif.ccinv) begin
+				//	next_state = IDLE;
+				//end else begin
 					next_state = WRINV;
-				end
+				//end
 			end
 
 			WRINV: begin
