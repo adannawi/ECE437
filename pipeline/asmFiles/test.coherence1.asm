@@ -6,11 +6,11 @@ org 0x0000
   ori $t0, $0, data1
   lui $t1, 0xDEAD
   ori $t1, $t1, 0xBEEF
-  sw  $t1, 0($t0) #Store DEADBEEF at 0x0404
+  sw  $t1, 0($t0) #Store DEADBEEF at 0x0400
   ori $t0, $0, data4
   lui $t1, 0xCAB1
   ori $t1, $t1, 0xFEED
-  sw  $t1, 0($t0) #Store CAB1FEED at 0x0408
+  sw  $t1, 0($t0) #Store CAB1FEED at 0x040c
   halt
 
 # core 2
@@ -22,16 +22,16 @@ org 0x0200
   ori $t0, $0, data3
   lui $t1, 0x0123
   ori $t1, $t1, 0x4567
-  sw  $t1, 0($t0) #Store 01234567 at 0x040C
+  sw  $t1, 0($t0) #Store 01234567 at 0x0408
   halt
 
 
 org 0x0400        #Final Values
 data1:
-  cfw 0xBAD0BAD0  #DEADBEEF
+  cfw 0xBAD0BAD0  #DEADBEEF < 400
 data2:
-  cfw 0xBAD0BAD0  #89ABCDEF
+  cfw 0xBAD0BAD0  #89ABCDEF < 404
 data3:
-  cfw 0xBAD0BAD0  #CAB1FEED
+  cfw 0xBAD0BAD0  #CAB1FEED <- 01234567 goes here < 408
 data4:
-  cfw 0xBAD0BAD0  #01234567
+  cfw 0xBAD0BAD0  #01234567 <- CAB1FEED goes here < 40c
