@@ -84,7 +84,8 @@ module memory_control (
     CTC1 = 3'b100,
     CTC2 = 3'b101,
     MEM1 = 3'b110,
-    MEM2 = 3'b111
+    MEM2 = 3'b111,
+    DLY = 3'b000
   } StateType;
 
   StateType state, nextstate;
@@ -240,6 +241,7 @@ assign ireq[0] = ccif.iREN[0];
 assign ireq[1] = ccif.iREN[1];
 
 // Combinational block to set servicing
+/*
 always_comb begin
   if (dreq[0] && !dreq[1]) begin
     servicing = 0;
@@ -255,19 +257,71 @@ always_comb begin
     servicing = nextservice;
   end
 end
+*/
+logic prevservice;
+logic instr_c1, instr_c2;
+logic data_c1, data_c2;
 
-// State Register //
+//Logic on who to serve next based on requests, just differentiates between cores
+always_comb begin
+  //Prioritize data for either core over instr for either
+  if (dreq[0] && !dreq[1]) begin
+    nextservice = 0;
+  end else if (!dreq[0] && dreq[1]) begin
+    nextservice = 1;
+
+  //Prioritize core not previously served if both iREQs or dREQs
+  end else if ((dreq[0] && dreq[1]) || (ireq[0] && ireq[1])) begin
+    nextservice = ~prevservice;
+
+  //If no data instructions, give service to whichever core is asking for instructions
+  end else if (ireq[0] && !ireq[1]) begin
+    nextservice = 0;
+  end else if (!ireq[0] && ireq[1]) begin
+    nextservice = 1;
+  end else begin
+    nextservice = nextservice;
+  end
+end
+///////////////////////////////////////////////////////////////////////
+////////////////////////// STATE MACHINE  /////////////////////////////
+
+
+//////////////////////////////
+/////// STATE REGISTER ///////
+//////////////////////////////
+
 always_ff @ (posedge CLK, negedge nRST) begin
   if (nRST == 0) begin
     state <= IDLE;
-
-
-    nextservice <= 0;
+    prevservice <= 0;
+    servicing <= 0;
+    //nextservice <= 0;
   end else begin
     state <= nextstate;
 
+    //Only update servicing in IDLE to avoid issues with updating before getting done
+    if (state == IDLE) begin
+      servicing <= nextservice;
+    end else begin
+      servicing <= servicing;
+    end
 
+    //Update servicing at end of an instruction access
 
+    //Update when iwait of not servicing 
+    if (!ccif.iwait[servicing] && ccif.ramstate == ACCESS) begin
+      servicing <= nextservice;
+      prevservice <= servicing;
+    
+    //Update service at the end of a coherence operation
+    end else if (((state == CTC2) || (state == MEM2) || (state == INV)) && (nextstate == IDLE)) begin
+      prevservice <= servicing;
+    end else begin
+      prevservice <= prevservice;
+    end
+
+      /*
     if (!ccif.iwait[servicing] && ccif.ramstate == ACCESS) begin
       nextservice <= ~servicing;
     end else if (((state == CTC2) || (state == MEM2)) && (nextstate == IDLE)) begin
@@ -275,62 +329,84 @@ always_ff @ (posedge CLK, negedge nRST) begin
     end else begin
       nextservice <= nextservice;
     end
+    */
   end
 end // always_ff @ (posedge CLK, negedge nRST)
 
-
-// Next State Logic
+//////////////////////////////
+////// NEXT STATE LOGIC //////
+//////////////////////////////
 always_comb begin
-  nextstate = state;
+  nextstate = state; //Default
   casez(state)
     IDLE: begin
-        if (ccif.cctrans[1] || ccif.cctrans[0]) begin
-          nextstate = SNOOP;
-        end
-        end
+      if (ccif.cctrans[1] || ccif.cctrans[0]) begin
+        nextstate = DLY;
+      end
+    end
+
+    DLY: begin
+      nextstate = SNOOP;
+    end
+
     SNOOP: begin
-        if (ccif.cctrans[~servicing] && ccif.ccwrite[~servicing]) begin
-          nextstate = CTC1;
-        end else if (ccif.cctrans[~servicing] && !ccif.ccwrite[servicing] && !ccif.ccwrite[~servicing]) begin
-          nextstate = MEM1;
-        end else if (ccif.cctrans[~servicing] && ccif.ccwrite[servicing]) begin
-          nextstate = INV;
-        end else begin
-          nextstate = IDLE;
-        end
-        end
+        //Other core has and is modified, need to WB
+      if (ccif.cctrans[~servicing] && ccif.ccwrite[~servicing]) begin
+        nextstate = CTC1;
+
+        //Other core has in shared, or just in shared. Go to Memory
+      end else if (!ccif.cctrans[~servicing]) begin
+        nextstate = MEM1;
+
+        //Other core has, just needs to invalidate
+      end else if (ccif.cctrans[~servicing] && !ccif.ccwrite[~servicing]) begin
+        nextstate = INV;
+
+      end else begin
+        nextstate = IDLE;
+      end
+    end
+
     CTC1: begin
         if (!ccif.dwait[servicing]) begin
           nextstate = CTC2;
         end
         end
+
     CTC2: begin
-        if (!ccif.dwait[~servicing] && !ccif.ccwrite[servicing]) begin
-          nextstate = IDLE;
-        end else if (!ccif.dwait[~servicing] && ccif.ccwrite[servicing]) begin
-          nextstate = INV;
-        end
-        end
+      if (!ccif.dwait[~servicing] && !ccif.ccwrite[servicing]) begin
+        nextstate = IDLE;
+      end else if (!ccif.dwait[~servicing] && ccif.ccwrite[servicing]) begin
+        nextstate = INV;
+      end
+    end
+
     MEM1: begin
-        if (!ccif.dwait[servicing]) begin
-          nextstate = MEM2;
-        end
-        end
+      if (!ccif.dwait[servicing]) begin
+        nextstate = MEM2;
+      end
+    end
+
     MEM2: begin
         if (!ccif.dwait[servicing]) begin
           nextstate = IDLE;
         end
-        end
+    end
+
     INV: begin
         nextstate = IDLE;
     end
+
     default: begin
-        nextstate = state;
-        end
+          nextstate = state;
+    end
     endcase
 end // always_comb
 
-// Output Logic
+//////////////////////////////
+//////// OUTPUT LOGIC ////////
+//////////////////////////////
+
 always_comb begin
   // Defaults here
   coif.ccwait = '0;
@@ -343,6 +419,7 @@ always_comb begin
   coif.dload = ccif.daddr[servicing];
   coif.dwait = 0;
   casez(state)
+
   IDLE: begin
     coif.ccwait[~servicing] = 0;
     coif.ccinv[~servicing] = 0;
@@ -364,16 +441,26 @@ always_comb begin
     coif.dwait[~servicing] = 1;
     // ded
   end */
+  DLY: begin
+    coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
+    coif.ccwait[~servicing] = 1;
+    coif.dwait[servicing] = 1;
+    coif.dwait[~servicing] = 1;
+  end
+
   SNOOP: begin
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccwait[~servicing] = 1;
     coif.dwait[servicing] = 1;
     coif.dwait[~servicing] = 1;
   end
+
   INV: begin
+    coif.ccwait[~servicing] = 1;
     coif.ccinv[~servicing] = 1;
     coif.ccinv[servicing] = 0;
   end
+
   CTC1: begin
     coif.ramaddr = ccif.daddr[~servicing];
     coif.ramstore = ccif.dstore[~servicing];
@@ -384,6 +471,7 @@ always_comb begin
     coif.dwait[servicing] = mmif.dwait[servicing];
     coif.dwait[~servicing] = mmif.dwait[servicing];
   end
+
   CTC2: begin
     coif.ramaddr = ccif.daddr[~servicing];
     coif.ramstore = ccif.dstore[~servicing];
@@ -395,6 +483,7 @@ always_comb begin
     coif.dwait[servicing] = mmif.dwait[servicing];
     coif.dwait[~servicing] = mmif.dwait[servicing];
   end
+
   MEM1: begin
     coif.ramaddr = ccif.daddr[~servicing];
     coif.ramstore = 0;
@@ -405,6 +494,7 @@ always_comb begin
     coif.dwait[servicing] = mmif.dwait[servicing];
     coif.dwait[~servicing] = mmif.dwait[~servicing];
   end
+
   MEM2: begin
     coif.ramaddr = ccif.daddr[~servicing];
     coif.ramstore = 0;
@@ -415,6 +505,7 @@ always_comb begin
     coif.dwait[servicing] = mmif.dwait[servicing];
     coif.dwait[~servicing] = mmif.dwait[~servicing];
   end
+
   default: begin
     coif.ccwait[~servicing] = 0;
     coif.ccinv[~servicing] = 0;
@@ -426,9 +517,13 @@ always_comb begin
     coif.dload[servicing] = 0;
     coif.dwait[servicing] = 0;
     coif.dwait[~servicing] = 0;
-  end    
+  end  
+
 endcase
 end 
+
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
 
 //CC Snooping Signals
 assign ccif.ccsnoopaddr = coif.ccsnoopaddr;
