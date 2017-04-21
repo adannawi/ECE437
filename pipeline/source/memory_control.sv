@@ -280,7 +280,7 @@ always_comb begin
   end else if (!ireq[0] && ireq[1]) begin
     nextservice = 1;
   end else begin
-    nextservice = nextservice;
+    nextservice = 0;
   end
 end
 ///////////////////////////////////////////////////////////////////////
