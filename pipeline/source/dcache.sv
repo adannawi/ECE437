@@ -338,8 +338,8 @@ always_comb begin
 	//There are 3 signals here, which despite being redundant should enhance clarity
 	// modified | valid | invalid
 	//These defaults are done to imply that there is no data match if the data is both modified and invalid
-	modified = 1; 
-	invalid = 1; //Should get set whenever something is actually found
+	modified = 0; 
+	invalid = 0; //Should get set whenever something is actually found
 	//Only care about tag matches
 	if (dsets[dcache.idx].way1.tag == dcache.tag) begin
 		if (dsets[dcache.idx].way1.valid) begin
