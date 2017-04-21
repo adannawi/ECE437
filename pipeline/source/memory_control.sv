@@ -354,7 +354,7 @@ always_comb begin
       if (ccif.cctrans[~servicing] && ccif.ccwrite[~servicing]) begin
         nextstate = CTC1;
 
-        //Other core has in shared, or just in shared. Go to Memory
+        //Other core has in shared, or just in shared. Need to get data from memory, invalidate other
       end else if (!ccif.cctrans[~servicing]) begin
         nextstate = MEM1;
 
@@ -453,6 +453,7 @@ always_comb begin
     coif.ccwait[~servicing] = 1;
     coif.dwait[servicing] = 1;
     coif.dwait[~servicing] = 1;
+    coif.ccinv[~servicing] = ccif.ccwrite[servicing];
   end
 
   INV: begin

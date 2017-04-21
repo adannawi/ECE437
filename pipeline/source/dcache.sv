@@ -89,7 +89,8 @@ module dcache (
 	logic shared; //Inidicates if data is in shared
 
 	logic snoop_respond; //Indicates if cache should be basing its ouput to memory controller based off of snooping
-
+	logic [1:0] was_valid; //Indicates that the value being snooped was valid at the start of the snoop cycle
+	logic way; //Indicates which way the dhit was on
 
     //   26 bits tag | 3 bits idx | 1 bit block offset | 2 bits of byte offset (4 bytes/32 bits)
 	
@@ -111,6 +112,35 @@ module dcache (
   //output  dREN, dWEN, daddr, dstore,
   //        ccwrite, cctrans
   //);
+
+/////////////////////////////////////////////////////////////
+//					    was_valid
+/////////////////////////////////////////////////////////////
+//Set on SNOOP state to indicate if the data was valid then,
+
+always_ff @(posedge CLK, negedge nRST) begin
+	if (nRST == 0) begin
+		was_valid <= 0;
+	end else if (state == SNPD) begin
+		//Use to indicate that there was a dhit but was invalidated by snooping
+		was_valid <= 0; //Default to set which ever valid bit is not set to be 0
+		if (way) begin
+			was_valid[1] <= dhit;
+		end else begin
+			was_valid[0] <= dhit;
+		end
+
+	end else begin
+		was_valid <= was_valid;
+	end
+end
+
+
+
+
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+
 
 
 /////////////////////////////////////////////////////////////
@@ -275,24 +305,29 @@ end
 
 always_comb begin
 	dhit = 0;
+	way = 0; //Set to 1 to indicate that the hit was in way 2, default of 0 indicates way 1
 	if ((state == IDLE) && (dcif.dmemWEN || dcif.dmemREN)) begin
 		//Match to way 1 at given IDX
 		if ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) begin
 			dhit = 1;
+			way = 0;
 
 		//Match to way 2 at given IDX
 		end else if ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1)) begin
 			dhit = 1;
+			way = 1;
 
 		end
 	//Snoop States hit matching
 	end else if ((state == SNPD) || (state == SNPWB1) || (state == SNPWB1) || (state == INVAL)) begin
-		if ((dsets[dcache.idx].way1.tag == dcache.tag) && (dsets[dcache.idx].way1.valid == 1)) begin
+		if ((dsets[dcache.idx].way1.tag == dcache.tag) && ((dsets[dcache.idx].way1.valid == 1) || was_valid[0])) begin
 			dhit = 1;
+			way = 0; 
 
 		//Match to way 2 at given IDX
-		end else if ((dsets[dcache.idx].way2.tag == dcache.tag) && (dsets[dcache.idx].way2.valid == 1)) begin
+		end else if ((dsets[dcache.idx].way2.tag == dcache.tag) && ((dsets[dcache.idx].way2.valid == 1) || was_valid[1])) begin
 			dhit = 1;
+			way = 1;
 
 		end
 	end
@@ -317,6 +352,8 @@ always_comb begin
 			modified = dsets[dcache.idx].way2.dirty;
 		end
 	end
+
+	//Do we need to add signals here to indicate these correctly for when in snoop states? Might not be the safest
 end
 
 assign shared = !invalid && !modified;
@@ -538,6 +575,18 @@ begin
 				dsets[dcache.idx].way2.valid <= 0;
 			end
 		end
+
+		if ((state == SNPD) && (cif.ccinv) && dhit) begin
+			//If in way 1, invalidate
+			if (dsets[dcache.idx].way1.tag == dcache.tag) begin
+				dsets[dcache.idx].way1.valid <=0;
+
+			//Else invalidate way 2
+			end else if (dsets[dcache.idx].way2.tag == dcache.tag) begin
+				dsets[dcache.idx].way2.valid <=0;
+			end
+			
+		end
 		//Clean reset of dirty bits
 		for (i = 0; i < 8; i++) begin
 			if (dsets[i].way1.dirty == 1) begin
@@ -603,7 +652,18 @@ always_comb begin
 		cWEN = '0;
 
 	//Write on hit, if not writing back from memory to cache block
-	end else if (dhit && dcif.dmemWEN && !memtocache && shared && (state == IDLE)) begin
+
+	//REASONS WHY THIS DOESN'T WORK
+	//	1. If both caches have data in shared, this just overwrote one without checking that it actually was written
+	//	2. Maybe make another signal that indicates when a write was actually done which will prevent a dhit on a write until the write is actually done
+	//		Cases when write is done
+	//			S->M both in shared, one needs to snoop other to inval
+	//          M->M already in modified, should just write
+	//          I->M need to get from other cache
+	//          I->M need to get from mem
+	//	3. For a write when both are in shared, may need to go snoop the other cache and invalidate on WRSNP state to prevent other core from grabbing that value.
+	//Should only do this write in modified
+	end else if (dhit && dcif.dmemWEN && !memtocache && shared && (state == IDLE)) begin //Entering the danger zone here DANGER ZONE
 		//Enable whichever index has the matching tag, & block
 		//Indexes 000 to 111
 		if (dsets[dcache.idx].way1.tag == dcache.tag) begin
