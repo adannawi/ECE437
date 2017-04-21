@@ -456,7 +456,8 @@ always_comb begin
   end
 
   INV: begin
-    coif.ccwait[~servicing] = 1;
+    //coif.ccwait[~servicing] = 1;
+    coif.ccwait[~servicing] = 0;
     coif.ccinv[~servicing] = 1;
     coif.ccinv[servicing] = 0;
   end
@@ -477,15 +478,17 @@ always_comb begin
     coif.ramstore = ccif.dstore[~servicing];
     coif.ramWEN = 1;
     coif.dload[servicing] = ccif.dstore[~servicing]; 
-    coif.ccwait[~servicing] = 1;
+    //coif.ccwait[~servicing] = 1;
+    coif.ccwait[~servicing] = ccif.ccwrite[servicing]; //Set wait low if not going to inval for a write. ccwrite for servicing indicates that
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
     coif.ccinv[~servicing] = 1;
     coif.dwait[servicing] = mmif.dwait[servicing];
     coif.dwait[~servicing] = mmif.dwait[servicing];
+    coif.ccinv[servicing] = ccif.ccwrite[servicing]; //Indicate that you need to go to the invalidate state if serviced cache is writing
   end
 
   MEM1: begin
-    coif.ramaddr = ccif.daddr[~servicing];
+    coif.ramaddr = ccif.daddr[servicing]; //Address fro whatever is getting serviced
     coif.ramstore = 0;
     coif.ramREN = 1;
     coif.dload[servicing] = ccif.ramload;
@@ -496,12 +499,13 @@ always_comb begin
   end
 
   MEM2: begin
-    coif.ramaddr = ccif.daddr[~servicing];
+    coif.ramaddr = ccif.daddr[servicing]; //Should be address for whatever is getting serviced
     coif.ramstore = 0;
     coif.ramREN = 1;
     coif.dload[servicing] = ccif.ramload;
     coif.ccsnoopaddr[~servicing] = ccif.daddr[servicing];
-    coif.ccwait[~servicing] = 1;
+    //coif.ccwait[~servicing] = 1;
+    coif.ccwait[~servicing] = 0; //Should  always return to IDLE after this, so set low to tell other cache nearly odne
     coif.dwait[servicing] = mmif.dwait[servicing];
     coif.dwait[~servicing] = mmif.dwait[~servicing];
   end

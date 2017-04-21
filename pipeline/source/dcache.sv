@@ -88,6 +88,8 @@ module dcache (
 	logic invalid; //Indicates if whatever data currently being observed is invalid
 	logic shared; //Inidicates if data is in shared
 
+	logic snoop_respond; //Indicates if cache should be basing its ouput to memory controller based off of snooping
+
 
     //   26 bits tag | 3 bits idx | 1 bit block offset | 2 bits of byte offset (4 bytes/32 bits)
 	
@@ -109,6 +111,7 @@ module dcache (
   //output  dREN, dWEN, daddr, dstore,
   //        ccwrite, cctrans
   //);
+
 
 /////////////////////////////////////////////////////////////
 //					Link Register
@@ -146,7 +149,8 @@ end*/
 
 always_comb begin
 	//While snooping
-	if (!cif.ccwait) begin
+	cif.ccwrite = 0;
+	if (!snoop_respond) begin
 		if (dcif.dmemWEN && ((dhit && !modified) || !dhit)) begin
 			cif.ccwrite = 1;
 		end else begin
@@ -154,7 +158,7 @@ always_comb begin
 		end
 
 	//For being snooped
-	end else if (cif.ccwait) begin
+	end else if (snoop_respond) begin
 
 		//For WB
 		//I need to write back, will be asserted with CCtrans
@@ -185,7 +189,6 @@ end
 // S -> I   Only will happen on flush or invalidate, do we need to assert?
 // M -> I   When "I" have modified, other is invalidating, or flushing. Probably don't need a CCtrans for this
 // M -> S   When "I" have modified, and other is reading. Need to WB so definitely assert FROM other
-
 
 
 //FOR THIS TO WORK WE MUST HAVE THE DATA VALIDATED CORRECTLY AT THE RIGHT TIME
@@ -245,7 +248,7 @@ end
 	it could be modified for snoop? Need to de-assert dhit in that case. Uses existing hardware to register a snoop hit
 */
 always_comb begin
-	if (cif.ccwait) begin
+	if (snoop_respond) begin
 		dcache = dcachef_t'(cif.ccsnoopaddr);
 	end else begin
 		dcache = dcachef_t'(dcif.dmemaddr);
@@ -262,7 +265,7 @@ end
 always_comb begin
 	//Prevent assertion of a dhit in case of a snoop. Prevents the processor from running with an address that is being snooped by the other core
 	//This may be solved by LL/SC but this should eliminate some corner cases, if not optimize for it
-	if (cif.ccwait == 1) begin
+	if (snoop_respond == 1) begin
 		dcif.dhit = 0;
 	end else begin 
 		//Only really assign dhit for processor when there isn't a coherence operation
@@ -455,19 +458,60 @@ begin
 
 			if (cWEN[{dcache.idx,1'b0}] == 1) begin
 				//Write to first way
-				dsets[dcache.idx].way1.word2 <= block_data;
-				dsets[dcache.idx].way1.dirty <= 0;
-				dsets[dcache.idx].way1.valid <= 1;
-				dsets[dcache.idx].way1.tag <= dcache.tag;
+
+				//Deal with special case where it will be written anyways
+				if (dcif.dmemWEN && dcache.blkoff) begin
+					//Write to word 2 if needed (woudl just overide anyways. if fetching data this means its just coming from mem so doesn't need snoop)
+					dsets[dcache.idx].way1.word2 <= dcif.dmemstore;
+					dsets[dcache.idx].way1.dirty <= 1;
+					dsets[dcache.idx].way1.valid <= 1;
+					dsets[dcache.idx].way1.tag <= dcache.tag;
+
+				end else begin //Just these assignments was the original block
+					//Default is storing data as normal
+					dsets[dcache.idx].way1.word2 <= block_data;
+					dsets[dcache.idx].way1.dirty <= 0;
+					dsets[dcache.idx].way1.valid <= 1;
+					dsets[dcache.idx].way1.tag <= dcache.tag;  //END of original
+				end
+
+
+				//Write to first word on getting second block if needed (will just override the other anyways on the next cycle)
+				if (dcif.dmemWEN && !dcache.blkoff) begin
+					dsets[dcache.idx].way1.word1 <= dcif.dmemstore;
+					dsets[dcache.idx].way1.dirty <= 1;
+					dsets[dcache.idx].way1.valid <= 1;
+					dsets[dcache.idx].way1.tag <= dcache.tag;
+				end
 
 			end else if (cWEN[{dcache.idx,1'b1}] == 1) begin
 				//If not first, Write to second way
-				dsets[dcache.idx].way2.word2 <= block_data;
-				dsets[dcache.idx].way2.dirty <= 0;
-				dsets[dcache.idx].way2.valid <= 1;
-				dsets[dcache.idx].way2.tag <= dcache.tag;
+							
+				//If we want to write to this anyways, write off the bat
+				if (dcif.dmemWEN && dcache.blkoff) begin
+					//Write to word 2 if needed (woudl just overide anyways. if fetching data this means its just coming from mem so doesn't need snoop)
+					dsets[dcache.idx].way2.word2 <= dcif.dmemstore;
+					dsets[dcache.idx].way2.dirty <= 1;
+					dsets[dcache.idx].way2.valid <= 1;
+					dsets[dcache.idx].way2.tag <= dcache.tag;
+				end else begin
+					//Default is storing data as normal
+					dsets[dcache.idx].way2.word2 <= block_data;
+					dsets[dcache.idx].way2.dirty <= 0;
+					dsets[dcache.idx].way2.valid <= 1;
+					dsets[dcache.idx].way2.tag <= dcache.tag;
+				end
+
+				//Write to first word on getting second block if needed (will just override the other anyways on the next cycle)
+				if (dcif.dmemWEN && !dcache.blkoff) begin
+					dsets[dcache.idx].way2.word1 <= dcif.dmemstore;
+					dsets[dcache.idx].way2.dirty <= 1;
+					dsets[dcache.idx].way2.valid <= 1;
+					dsets[dcache.idx].way2.tag <= dcache.tag;
+				end
 			end 	
-		end else if ((state == WRSNP) && (dhit)) begin	
+		//end else if ((state == WRSNP) && (dhit)) begin	
+		end else if ((state == WRINV) && (dhit)) begin	
 			//Check for hit
 			if (cWEN[{dcache.idx,1'b0}] == 1) begin
 				//Write to first way
@@ -555,7 +599,7 @@ always_comb begin
 	cWEN = '0;
 
 	//Never write on a snoop
-	if (cif.ccwait) begin
+	if (snoop_respond) begin
 		cWEN = '0;
 
 	//Write on hit, if not writing back from memory to cache block
@@ -737,7 +781,7 @@ always_comb begin
 		end
 
 		//Address to write data ALREADY IN CACHE back to
-	end else if ((state == WB1) || (state == WB2)) begin
+	end else if ((state == WB1) || (state == WB2) || (state == SNPWB1) || (state == SNPWB2)) begin
 		//Select based off of current data trying to be READ or WRITTEN and LRU
 		data_way = lru[dcache.idx];
 		data_idx = dcache.idx;
@@ -754,6 +798,7 @@ always_comb begin
 
 		//Address to read from for FRESH DATA -> where to put it selected elsewhere
 	//end else if ((state == FD1) || (state == FD2)) begin
+
 	end else begin 
 		//Default to read
 		mem_addr = {dcache.tag, dcache.idx, word_sel, 2'b00};
@@ -896,8 +941,12 @@ end
 			end
 
 			FD2: begin
-				//Go back to idle once done getting data
-				if (!cif.dwait) begin
+				//Go to inval if writing
+				if (!cif.dwait && dcif.dmemWEN && cif.ccinv) begin
+					next_state = WRINV;
+
+				//Go back to idle if not writing
+				end else if (!cif.dwait) begin
 					next_state = IDLE;
 				
 				//Else keep waiting
@@ -965,11 +1014,15 @@ end
 				//			MAY NEED TO READD ARBITRATE STATE FOR THE CASE WHERE THIS KEEPS GOING BACK TO CHECK IF SNOOP IS DONE, BUT OTHER IS JUST COMPLETED
 				//			AND THIS CORE WILL NOT PROPERLY ASSERT THAT IT WANTS TO PERFORM AN OPERATION UNTIL IT IS A CYCLE LATE. ASSERTING THIS IN SNOOP MAY
 				//			BE SUFFICIENT SINCE THE OTHER CORE WILL BE IN WB1/FD1 AND CAN GO TO SNOOPED FORM THERE
-
-				//Default for when 
-				end else begin
-					//Else in shared and other core needs to just go Read from Mem
+				end else if (cif.ccwait == 0) begin
 					next_state = IDLE;
+
+				end else begin
+					next_state = SNPD;
+				//Default for when 
+				/*end else begin
+					//Else in shared and other core needs to just go Read from Mem
+					next_state = IDLE;*/
 				end
 			end
 
@@ -995,7 +1048,7 @@ end
 					
 				end else begin
 					//Default
-					next_state = SNPWB1;
+					next_state = SNPWB2;
 				end
 			end
 
@@ -1032,6 +1085,7 @@ end
 		cif.dREN = 0;
 		cif.dWEN = 0;
 		word_sel = 0;
+		snoop_respond = 0;
 
 		casez(state)
 		
@@ -1099,6 +1153,7 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 0;
 				word_sel = 0;
+				snoop_respond = 1;
 			end
 
 			/*WRCNT: begin
@@ -1108,6 +1163,14 @@ end
 				word_sel = 0;
 			end
 			*/
+
+			SNPD: begin
+				dcif.flushed = 0;
+				cif.dREN = 0;
+				cif.dWEN = 0;
+				word_sel = 0;
+				snoop_respond = 1;
+			end
 
 			FLUSHED: begin
 				dcif.flushed = 1;
@@ -1121,6 +1184,7 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 1;
 				word_sel = 0;
+				snoop_respond = 1;
 			end
 
 			SNPWB2: begin
@@ -1128,6 +1192,7 @@ end
 				cif.dREN = 0;
 				cif.dWEN = 1;
 				word_sel = 1;
+				snoop_respond = 1;
 			end
 
 			WRSNP: begin
